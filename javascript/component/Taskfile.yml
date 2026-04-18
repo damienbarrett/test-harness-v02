@@ -1,0 +1,51 @@
+version: "3"
+
+vars:
+  TOOL_PATH:
+    sh: printf '%s' "$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+  WIT_PATH: "../../common/wit/tasks.wit"
+  WORLD_NAME: "task-component"
+  OUTPUT_WASM: "task-component.wasm"
+
+env:
+  PATH: "{{.TOOL_PATH}}"
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  setup:
+    desc: Install dependencies
+    cmds:
+      - npm ci
+
+  build:
+    desc: Build the WASM component and transpile for testing
+    cmds:
+      - npx jco componentize src/app.js --wit {{.WIT_PATH}} -n {{.WORLD_NAME}} -d all --enable clocks --enable random --enable stdio -o {{.OUTPUT_WASM}}
+      - npx jco transpile {{.OUTPUT_WASM}} -o transpiled/
+
+  test:
+    desc: Run tests (builds first)
+    deps: [build]
+    cmds:
+      - node --test tests/*.test.js
+
+  coverage:
+    desc: Run tests with coverage (builds first, 100% threshold)
+    deps: [build]
+    cmds:
+      - >-
+        node --test --experimental-test-coverage
+        --test-coverage-include='src/**'
+        --test-coverage-lines=100
+        --test-coverage-branches=100
+        --test-coverage-functions=100
+        tests/*.test.js
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf node_modules transpiled task-component.wasm

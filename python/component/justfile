@@ -1,0 +1,41 @@
+export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
+
+wit_dir := "../../common/wit"
+output_wasm := "task-component.wasm"
+bindings_dir := "bindings"
+
+# List available commands
+default:
+    @just --list
+
+# Install dependencies
+setup:
+    uv sync --locked --extra build --extra test
+
+# Build the WASM component
+#
+# Emits the wit-bindgen-generated `wit_world` package to `bindings/` (a stable
+# location, gitignored) so host tests can import the real bindings instead of
+# mocking them away. The `componentize` step then bundles `src/` + `bindings/`
+# into the WASM artifact.
+build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rm -rf {{bindings_dir}}
+    uv run --locked --extra build componentize-py \
+      -d {{wit_dir}} -w task-component bindings {{bindings_dir}}
+    uv run --locked --extra build componentize-py \
+      -d {{wit_dir}} -w task-component componentize \
+      -p src -p {{bindings_dir}} -s -o {{output_wasm}} app
+
+# Run tests (builds first)
+test: build
+    uv run --locked --extra test pytest tests/ -v
+
+# Run tests with coverage (builds first)
+coverage: build
+    uv run --locked --extra test pytest tests/ --cov --cov-report=term-missing
+
+# Remove build artifacts and caches
+clean:
+    rm -rf .venv __pycache__ .pytest_cache .coverage htmlcov tests/__pycache__ {{bindings_dir}} {{output_wasm}}

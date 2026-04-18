@@ -1,0 +1,22 @@
+export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
+
+# List available commands
+default:
+    @just --list
+
+# Install dependencies
+setup:
+    uv sync --locked --extra test
+
+# Run tests
+test:
+    uv run --locked --extra test pytest tests/ -v
+
+# Run tests with coverage
+coverage:
+    uv run --locked --extra test pytest tests/ --cov --cov-report=term-missing
+
+# Remove build artifacts and caches
+clean:
+    rm -rf .venv __pycache__ .pytest_cache .coverage htmlcov tests/__pycache__ src/tasks/__pycache__
+    find . -name '*.egg-info' -exec rm -rf {} + 2>/dev/null || true

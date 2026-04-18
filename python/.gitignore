@@ -1,0 +1,13 @@
+.task/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.egg-info/
+*.wasm
+.coverage
+htmlcov/
+# Generated wit-bindgen bindings — emitted by `componentize-py bindings` into
+# component/bindings/ so host tests can import the real `wit_world` package
+# instead of mocking it. Regenerated on every build.
+component/bindings/

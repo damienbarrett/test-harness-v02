@@ -1,0 +1,35 @@
+version: "3"
+
+vars:
+  TOOL_PATH:
+    sh: printf '%s' "$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+
+env:
+  PATH: "{{.TOOL_PATH}}"
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  setup:
+    desc: Install dependencies
+    cmds:
+      - uv sync --locked --extra test
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run --locked --extra test pytest tests/ -v
+
+  coverage:
+    desc: Run tests with coverage
+    cmds:
+      - uv run --locked --extra test pytest tests/ --cov --cov-report=term-missing
+
+  clean:
+    desc: Remove build artifacts and caches
+    cmds:
+      - rm -rf .venv __pycache__ .pytest_cache .coverage htmlcov tests/__pycache__ src/tasks/__pycache__
+      - find . -name '*.egg-info' -exec rm -rf {} + 2>/dev/null || true

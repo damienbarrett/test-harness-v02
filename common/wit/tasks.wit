@@ -1,0 +1,18 @@
+package common:tasks;
+
+/// Operations that apply to collections of tasks.
+interface task-collections {
+    /// A unit of work to be completed.
+    record task {
+        /// The human-readable name of the task.
+        name: string,
+    }
+
+    /// Returns the count of tasks in the provided list.
+    count-tasks: func(tasks: list<task>) -> u32;
+}
+
+/// Contract for a component that implements task operations.
+world task-component {
+    export task-collections;
+}

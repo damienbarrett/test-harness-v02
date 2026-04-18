@@ -1,0 +1,39 @@
+version: "3"
+
+includes:
+  library:
+    taskfile: library/Taskfile.yml
+    dir: library
+  component:
+    taskfile: component/Taskfile.yml
+    dir: component
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  setup:
+    desc: Install all dependencies
+    cmds:
+      - task: library:setup
+      - task: component:setup
+
+  test:
+    desc: Run all tests
+    cmds:
+      - task: library:test
+      - task: component:test
+
+  coverage:
+    desc: Run all tests with coverage
+    cmds:
+      - task: library:coverage
+      - task: component:coverage
+
+  clean:
+    desc: Clean all build artifacts
+    cmds:
+      - task: library:clean
+      - task: component:clean

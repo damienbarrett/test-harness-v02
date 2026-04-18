@@ -1,0 +1,23 @@
+export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
+
+# List available commands
+default:
+    @just --list
+
+# Install dependencies
+setup:
+    cargo fetch --locked
+    rustup component add llvm-tools-preview
+    if ! cargo llvm-cov --version >/dev/null 2>&1; then cargo install cargo-llvm-cov --locked --version 0.6.21; fi
+
+# Run tests
+test:
+    cargo test --locked --tests
+
+# Run tests with coverage (100% threshold)
+coverage:
+    cargo llvm-cov --locked --tests --fail-under-lines 100 --fail-under-functions 100 --fail-under-regions 100
+
+# Remove build artifacts
+clean:
+    cargo clean

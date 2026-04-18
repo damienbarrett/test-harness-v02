@@ -1,0 +1,5 @@
+library/target/
+component/target/
+component/task-component.wasm
+component/src/bindings.rs
+.task/

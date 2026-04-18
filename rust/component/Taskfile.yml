@@ -1,0 +1,58 @@
+version: "3"
+
+vars:
+  TOOL_PATH:
+    sh: printf '%s' "$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+
+env:
+  PATH: "{{.TOOL_PATH}}"
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  setup:
+    desc: Install dependencies
+    cmds:
+      - rustup target add wasm32-wasip1
+      - |
+        if ! cargo component --version >/dev/null 2>&1; then
+          cargo install cargo-component --locked --version 0.21.1
+        fi
+      - cargo fetch --locked
+      - rustup component add llvm-tools-preview
+      - |
+        if ! cargo llvm-cov --version >/dev/null 2>&1; then
+          cargo install cargo-llvm-cov --locked --version 0.6.21
+        fi
+
+  build:
+    desc: Build the WASM component
+    sources:
+      - src/**/*.rs
+      - ../../common/wit/tasks.wit
+    generates:
+      - task-component.wasm
+    cmds:
+      - cargo component build --release
+      - cp target/wasm32-wasip1/release/task_component.wasm task-component.wasm
+
+  test:
+    desc: Run tests (builds first)
+    deps: [build]
+    cmds:
+      - cargo test --locked --tests
+
+  coverage:
+    desc: Run tests with coverage (100% threshold)
+    deps: [build]
+    cmds:
+      - cargo llvm-cov --locked --tests --fail-under-lines 100 --fail-under-functions 100 --fail-under-regions 100
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - cargo clean
+      - rm -f task-component.wasm

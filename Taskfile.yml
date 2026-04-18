@@ -1,0 +1,178 @@
+version: "3"
+
+includes:
+  python:
+    taskfile: python/Taskfile.yml
+    dir: python
+  javascript:
+    taskfile: javascript/Taskfile.yml
+    dir: javascript
+  rust:
+    taskfile: rust/Taskfile.yml
+    dir: rust
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  setup:
+    desc: Install all dependencies
+    cmds:
+      - task: python:setup
+      - task: javascript:setup
+      - task: rust:setup
+
+  test:
+    desc: Run all tests
+    cmds:
+      - task: python:test
+      - task: javascript:test
+      - task: rust:test
+
+  coverage:
+    desc: Run all tests with coverage
+    cmds:
+      - task: python:coverage
+      - task: javascript:coverage
+      - task: rust:coverage
+
+  clean:
+    desc: Clean all build artifacts
+    cmds:
+      - task: python:clean
+      - task: javascript:clean
+      - task: rust:clean
+
+  wasm:test:
+    desc: Run unified WASM contract tests across all implementations
+    cmds:
+      - ./test-harness/run-wasm-tests.py
+
+  check:runners:
+    desc: Check Taskfile.yml and justfile parity
+    cmds:
+      - ./test-harness/check-runner-parity.py
+
+  container:healthcheck:
+    desc: Check Apple container runtime and the selected harness image
+    cmds:
+      - ./container/container-healthcheck.sh
+
+  container:pull:
+    desc: Pull the Codex universal image for native Apple silicon
+    cmds:
+      - ./container/container-pull.sh
+
+  container:build:
+    desc: Build the optional cached harness image
+    cmds:
+      - ./container/container-build.sh
+
+  container:shell:
+    desc: Open an interactive shell in the selected harness image
+    cmds:
+      - ./container/container-shell.sh
+
+  container:task:
+    desc: Run an arbitrary task command inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'task {{.CLI_ARGS}}'
+
+  container:just:
+    desc: Run an arbitrary just command inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'just {{.CLI_ARGS}}'
+
+  container:task:setup:
+    desc: Run task setup inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'task setup'
+
+  container:task:test:
+    desc: Run task test inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'task test'
+
+  container:task:coverage:
+    desc: Run task coverage inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'task coverage'
+
+  container:task:clean:
+    desc: Run task clean inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'task clean'
+
+  container:just:setup:
+    desc: Run just setup inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'just setup'
+
+  container:just:test:
+    desc: Run just test inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'just test'
+
+  container:just:coverage:
+    desc: Run just coverage inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'just coverage'
+
+  container:just:clean:
+    desc: Run just clean inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'just clean'
+
+  container:setup:
+    desc: Run both task setup and just setup inside one container
+    cmds:
+      - >-
+        ./container/container-run.sh
+        'task_status=0; just_status=0;
+        echo "=== task setup ==="; task setup; task_status=$?;
+        echo "=== just setup ==="; just setup; just_status=$?;
+        echo "=== summary ===";
+        echo "task setup exit=$task_status";
+        echo "just setup exit=$just_status";
+        if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+
+  container:test:
+    desc: Run both task test and just test inside one container
+    cmds:
+      - >-
+        ./container/container-run.sh
+        'task_status=0; just_status=0;
+        echo "=== task test ==="; task test; task_status=$?;
+        echo "=== just test ==="; just test; just_status=$?;
+        echo "=== summary ===";
+        echo "task test exit=$task_status";
+        echo "just test exit=$just_status";
+        if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+
+  container:coverage:
+    desc: Run both task coverage and just coverage inside one container
+    cmds:
+      - >-
+        ./container/container-run.sh
+        'task_status=0; just_status=0;
+        echo "=== task coverage ==="; task coverage; task_status=$?;
+        echo "=== just coverage ==="; just coverage; just_status=$?;
+        echo "=== summary ===";
+        echo "task coverage exit=$task_status";
+        echo "just coverage exit=$just_status";
+        if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+
+  container:clean:
+    desc: Run both task clean and just clean inside one container
+    cmds:
+      - >-
+        ./container/container-run.sh
+        'task_status=0; just_status=0;
+        echo "=== task clean ==="; task clean; task_status=$?;
+        echo "=== just clean ==="; just clean; just_status=$?;
+        echo "=== summary ===";
+        echo "task clean exit=$task_status";
+        echo "just clean exit=$just_status";
+        if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'

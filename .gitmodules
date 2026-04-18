@@ -1,0 +1,12 @@
+[submodule "common"]
+	path = common
+	url = ./common
+[submodule "python"]
+	path = python
+	url = ./python
+[submodule "rust"]
+	path = rust
+	url = ./rust
+[submodule "javascript"]
+	path = javascript
+	url = ./javascript

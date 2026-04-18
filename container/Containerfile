@@ -1,0 +1,20 @@
+FROM ghcr.io/openai/codex-universal:latest
+
+SHELL ["/bin/bash", "-lc"]
+
+ENV CODEX_ENV_PYTHON_VERSION=3.13 \
+    CODEX_ENV_NODE_VERSION=22 \
+    CODEX_ENV_RUST_VERSION=1.92.0 \
+    CODEX_ENV_GO_VERSION=1.25.1 \
+    CARGO_BUILD_JOBS=1 \
+    CARGO_PROFILE_RELEASE_LTO=false \
+    CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 \
+    PATH=/root/.local/bin:/root/.cargo/bin:/root/go/bin:/root/.local/share/mise/shims:${PATH}
+
+RUN /opt/codex/setup_universal.sh \
+    && rustup target add wasm32-wasip1 \
+    && rustup component add llvm-tools-preview \
+    && cargo install cargo-component --locked --version 0.21.1 \
+    && cargo install cargo-llvm-cov --locked --version 0.6.21 \
+    && cargo install just --locked --version 1.49.0 \
+    && go install github.com/go-task/task/v3/cmd/task@v3.50.0

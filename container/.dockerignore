@@ -1,0 +1,13 @@
+.git
+.task
+
+**/.coverage
+**/.pytest_cache
+**/.venv
+**/__pycache__
+**/htmlcov
+**/node_modules
+**/target
+**/transpiled
+**/*.egg-info
+**/task-component.wasm

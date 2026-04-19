@@ -1,12 +1,15 @@
 [submodule "common"]
 	path = common
-	url = ./common
+	url = https://github.com/damienbarrett/test-harness-v02-common.git
 [submodule "python"]
 	path = python
-	url = ./python
+	url = https://github.com/damienbarrett/test-harness-v02-python.git
 [submodule "rust"]
 	path = rust
-	url = ./rust
+	url = https://github.com/damienbarrett/test-harness-v02-rust.git
 [submodule "javascript"]
 	path = javascript
-	url = ./javascript
+	url = https://github.com/damienbarrett/test-harness-v02-javascript.git
+[submodule "test-harness"]
+	path = test-harness
+	url = https://github.com/damienbarrett/test-harness-v02-test-harness.git

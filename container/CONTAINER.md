@@ -20,6 +20,7 @@ CONTAINER=${CONTAINER:-/usr/local/bin/container}
   --env CODEX_ENV_NODE_VERSION=22 \
   --env CODEX_ENV_RUST_VERSION=1.92.0 \
   --env CODEX_ENV_GO_VERSION=1.25.9 \
+  --env CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target \
   --volume "$PWD:/workspace/v02" \
   --workdir /workspace/v02 \
   ghcr.io/openai/codex-universal:latest
@@ -57,6 +58,7 @@ CONTAINER=${CONTAINER:-/usr/local/bin/container}
   --env CODEX_ENV_NODE_VERSION=22 \
   --env CODEX_ENV_RUST_VERSION=1.92.0 \
   --env CODEX_ENV_GO_VERSION=1.25.9 \
+  --env CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target \
   --volume "$PWD:/workspace/v02" \
   --workdir /workspace/v02 \
   ghcr.io/openai/codex-universal:latest \
@@ -80,6 +82,7 @@ Then run:
   --arch arm64 \
   --memory 8G \
   --cpus 6 \
+  --env CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target \
   --volume "$PWD:/workspace/v02" \
   --workdir /workspace/v02 \
   codex-harness:arm64
@@ -88,6 +91,8 @@ Then run:
 The derived image build uses the repository root as its build context so it can read `javascript/library/package-lock.json` and bake the locked Playwright browser revision into the image. Runtime commands still mount the live checkout, so tests run against local working-tree changes rather than a copy baked into the image.
 
 The JavaScript setup commands install Linux browser dependencies with Playwright when they detect a Linux container. Because the default base-image runs use `--rm`, setup and test must happen in the same container unless you use the derived image or mount a persistent Playwright cache.
+
+The repository wrapper scripts set `CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target` inside containers. That keeps container Rust build artifacts out of the mounted checkout's host `target/` directories while still allowing Cargo to reuse compiled artifacts within a single container lifecycle. Override `CODEX_HARNESS_CARGO_TARGET_DIR` if you need a different in-container target path.
 
 ## Root Harness Commands
 
@@ -156,5 +161,6 @@ Other useful overrides:
 
 ```sh
 CODEX_HARNESS_MEMORY=16G CODEX_HARNESS_CPUS=10 task container:test
+CODEX_HARNESS_CARGO_TARGET_DIR=/tmp/custom-cargo-target task container:test
 CONTAINER=/usr/local/bin/container just container-healthcheck
 ```

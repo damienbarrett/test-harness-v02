@@ -3,3 +3,31 @@
 
 # Task runner cache
 .task/
+
+# Local tool caches and session artifacts
+.cache/
+.claude/settings.local.json
+.playwright-mcp/
+
+# Runtime dependency/build folders
+.venv/
+node_modules/
+target/
+dist/
+build/
+transpiled/
+htmlcov/
+
+# Coverage and compiled artifacts
+.coverage
+*.profraw
+*.profdata
+*.pyc
+*.wasm
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/

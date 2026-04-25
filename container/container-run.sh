@@ -21,6 +21,7 @@ image="${CODEX_HARNESS_IMAGE:-ghcr.io/openai/codex-universal:latest}"
 memory="${CODEX_HARNESS_MEMORY:-12G}"
 workspace="${CODEX_HARNESS_WORKSPACE:-/workspace/v02}"
 bootstrap="${CODEX_HARNESS_BOOTSTRAP:-1}"
+cargo_target_dir="${CODEX_HARNESS_CARGO_TARGET_DIR:-/tmp/codex-harness-cargo-target}"
 
 if [[ $# -eq 0 ]]; then
   command="bash"
@@ -40,6 +41,7 @@ exec "$container_bin" run --rm \
   --env CODEX_ENV_NODE_VERSION="${CODEX_ENV_NODE_VERSION:-22}" \
   --env CODEX_ENV_RUST_VERSION="${CODEX_ENV_RUST_VERSION:-1.92.0}" \
   --env CODEX_ENV_GO_VERSION="${CODEX_ENV_GO_VERSION:-1.25.9}" \
+  --env CARGO_TARGET_DIR="$cargo_target_dir" \
   --volume "$repo_root:$workspace" \
   --workdir "$workspace" \
   "$image" \

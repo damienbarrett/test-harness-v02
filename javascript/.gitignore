@@ -1,3 +1,26 @@
+# OS
+.DS_Store
+
+# Task runner and local caches
+.task/
+.cache/
+
+# Runtime dependencies and build outputs
 node_modules/
-*.wasm
+dist/
+build/
+coverage/
 transpiled/
+
+# Coverage and compiled artifacts
+.coverage
+*.wasm
+*.profraw
+*.profdata
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/

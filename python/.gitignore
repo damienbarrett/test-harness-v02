@@ -1,12 +1,35 @@
+# OS
+.DS_Store
+
+# Task runner and local caches
 .task/
+.cache/
+
+# Runtime dependencies and build outputs
 .venv/
+build/
+dist/
+
+# Python caches
 __pycache__/
 .pytest_cache/
 *.pyc
 *.egg-info/
+
+# Coverage and compiled artifacts
 *.wasm
 .coverage
 htmlcov/
+*.profraw
+*.profdata
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
 # Generated wit-bindgen bindings — emitted by `componentize-py bindings` into
 # component/bindings/ so host tests can import the real `wit_world` package
 # instead of mocking it. Regenerated on every build.

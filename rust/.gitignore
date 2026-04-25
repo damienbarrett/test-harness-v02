@@ -1,5 +1,26 @@
+# OS
+.DS_Store
+
+# Task runner and local caches
+.task/
+.cache/
+
+# Cargo build outputs
 library/target/
 component/target/
+
+# Generated component artifacts
 component/task-component.wasm
 component/src/bindings.rs
-.task/
+
+# Coverage and compiled artifacts
+.coverage
+*.profraw
+*.profdata
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/

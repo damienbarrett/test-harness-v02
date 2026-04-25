@@ -52,13 +52,13 @@ container-just *command:
 container-task-setup:
     ./container/container-run.sh 'task setup'
 
-# Run task test inside the selected harness image
+# Run task setup and test inside the selected harness image
 container-task-test:
-    ./container/container-run.sh 'task test'
+    ./container/container-run.sh './container/container-suite.sh task test'
 
-# Run task coverage inside the selected harness image
+# Run task setup and coverage inside the selected harness image
 container-task-coverage:
-    ./container/container-run.sh 'task coverage'
+    ./container/container-run.sh './container/container-suite.sh task coverage'
 
 # Run task clean inside the selected harness image
 container-task-clean:
@@ -68,13 +68,13 @@ container-task-clean:
 container-just-setup:
     ./container/container-run.sh 'just setup'
 
-# Run just test inside the selected harness image
+# Run just setup and test inside the selected harness image
 container-just-test:
-    ./container/container-run.sh 'just test'
+    ./container/container-run.sh './container/container-suite.sh just test'
 
-# Run just coverage inside the selected harness image
+# Run just setup and coverage inside the selected harness image
 container-just-coverage:
-    ./container/container-run.sh 'just coverage'
+    ./container/container-run.sh './container/container-suite.sh just coverage'
 
 # Run just clean inside the selected harness image
 container-just-clean:
@@ -82,19 +82,19 @@ container-just-clean:
 
 # Run both task setup and just setup inside one container
 container-setup:
-    ./container/container-run.sh 'task_status=0; just_status=0; echo "=== task setup ==="; task setup; task_status=$?; echo "=== just setup ==="; just setup; just_status=$?; echo "=== summary ==="; echo "task setup exit=$task_status"; echo "just setup exit=$just_status"; if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+    ./container/container-run.sh './container/container-suite.sh both setup'
 
-# Run both task test and just test inside one container
+# Run both task and just setup/test inside one container
 container-test:
-    ./container/container-run.sh 'task_status=0; just_status=0; echo "=== task test ==="; task test; task_status=$?; echo "=== just test ==="; just test; just_status=$?; echo "=== summary ==="; echo "task test exit=$task_status"; echo "just test exit=$just_status"; if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+    ./container/container-run.sh './container/container-suite.sh both test'
 
-# Run both task coverage and just coverage inside one container
+# Run both task and just setup/coverage inside one container
 container-coverage:
-    ./container/container-run.sh 'task_status=0; just_status=0; echo "=== task coverage ==="; task coverage; task_status=$?; echo "=== just coverage ==="; just coverage; just_status=$?; echo "=== summary ==="; echo "task coverage exit=$task_status"; echo "just coverage exit=$just_status"; if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+    ./container/container-run.sh './container/container-suite.sh both coverage'
 
 # Run both task clean and just clean inside one container
 container-clean:
-    ./container/container-run.sh 'task_status=0; just_status=0; echo "=== task clean ==="; task clean; task_status=$?; echo "=== just clean ==="; just clean; just_status=$?; echo "=== summary ==="; echo "task clean exit=$task_status"; echo "just clean exit=$just_status"; if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+    ./container/container-run.sh './container/container-suite.sh both clean'
 
 # Install Python dependencies
 python-setup:

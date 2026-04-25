@@ -19,7 +19,7 @@ CONTAINER=${CONTAINER:-/usr/local/bin/container}
   --env CODEX_ENV_PYTHON_VERSION=3.13 \
   --env CODEX_ENV_NODE_VERSION=22 \
   --env CODEX_ENV_RUST_VERSION=1.92.0 \
-  --env CODEX_ENV_GO_VERSION=1.25.1 \
+  --env CODEX_ENV_GO_VERSION=1.25.9 \
   --volume "$PWD:/workspace/v02" \
   --workdir /workspace/v02 \
   ghcr.io/openai/codex-universal:latest
@@ -43,7 +43,8 @@ just test
 just coverage
 ```
 
-For a one-shot run:
+For a one-shot run, run setup and test in the same ephemeral container so
+browser runtimes downloaded by Playwright remain available to the tests:
 
 ```sh
 CONTAINER=${CONTAINER:-/usr/local/bin/container}
@@ -55,11 +56,11 @@ CONTAINER=${CONTAINER:-/usr/local/bin/container}
   --env CODEX_ENV_PYTHON_VERSION=3.13 \
   --env CODEX_ENV_NODE_VERSION=22 \
   --env CODEX_ENV_RUST_VERSION=1.92.0 \
-  --env CODEX_ENV_GO_VERSION=1.25.1 \
+  --env CODEX_ENV_GO_VERSION=1.25.9 \
   --volume "$PWD:/workspace/v02" \
   --workdir /workspace/v02 \
   ghcr.io/openai/codex-universal:latest \
-  -lc './container/bootstrap-container-tools.sh && task test'
+  -lc './container/bootstrap-container-tools.sh && task setup && task test'
 ```
 
 ## Optional Derived Image
@@ -69,7 +70,7 @@ If you have enough free disk and want to avoid bootstrapping tools on every run,
 ```sh
 CONTAINER=${CONTAINER:-/usr/local/bin/container}
 
-"$CONTAINER" build --arch arm64 --tag codex-harness:arm64 --file container/Containerfile container
+"$CONTAINER" build --arch arm64 --tag codex-harness:arm64 --file container/Containerfile .
 ```
 
 Then run:
@@ -84,7 +85,9 @@ Then run:
   codex-harness:arm64
 ```
 
-The JavaScript browser tests install Linux browser dependencies with Playwright when they detect a Linux container.
+The derived image build uses the repository root as its build context so it can read `javascript/library/package-lock.json` and bake the locked Playwright browser revision into the image. Runtime commands still mount the live checkout, so tests run against local working-tree changes rather than a copy baked into the image.
+
+The JavaScript setup commands install Linux browser dependencies with Playwright when they detect a Linux container. Because the default base-image runs use `--rm`, setup and test must happen in the same container unless you use the derived image or mount a persistent Playwright cache.
 
 ## Root Harness Commands
 
@@ -102,7 +105,7 @@ just container-pull
 just container-build
 ```
 
-Run the Task harness inside the container:
+Run the Task harness inside the container. The test and coverage wrappers run setup first in the same container:
 
 ```sh
 task container:task:test
@@ -112,7 +115,7 @@ just container-task-test
 just container-task-coverage
 ```
 
-Run the Just harness inside the container:
+Run the Just harness inside the container. The test and coverage wrappers run setup first in the same container:
 
 ```sh
 task container:just:test
@@ -122,7 +125,7 @@ just container-just-test
 just container-just-coverage
 ```
 
-Run both harnesses in the same container, preserving both exit codes:
+Run both harnesses in the same container, preserving exit codes. The test and coverage wrappers run each harness setup before that harness command:
 
 ```sh
 task container:test

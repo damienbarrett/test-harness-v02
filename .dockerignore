@@ -1,0 +1,8 @@
+*
+
+!container/
+!container/Containerfile
+!javascript/
+!javascript/library/
+!javascript/library/package.json
+!javascript/library/package-lock.json

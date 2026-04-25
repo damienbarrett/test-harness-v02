@@ -5,7 +5,7 @@ SHELL ["/bin/bash", "-lc"]
 ENV CODEX_ENV_PYTHON_VERSION=3.13 \
     CODEX_ENV_NODE_VERSION=22 \
     CODEX_ENV_RUST_VERSION=1.92.0 \
-    CODEX_ENV_GO_VERSION=1.25.1 \
+    CODEX_ENV_GO_VERSION=1.25.9 \
     CARGO_BUILD_JOBS=1 \
     CARGO_PROFILE_RELEASE_LTO=false \
     CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 \
@@ -18,3 +18,11 @@ RUN /opt/codex/setup_universal.sh \
     && cargo install cargo-llvm-cov --locked --version 0.6.21 \
     && cargo install just --locked --version 1.49.0 \
     && go install github.com/go-task/task/v3/cmd/task@v3.50.0
+
+COPY javascript/library/package.json /tmp/codex-harness-playwright/package.json
+COPY javascript/library/package-lock.json /tmp/codex-harness-playwright/package-lock.json
+
+RUN cd /tmp/codex-harness-playwright \
+    && npm ci \
+    && npx playwright install --with-deps chromium webkit \
+    && rm -rf /tmp/codex-harness-playwright

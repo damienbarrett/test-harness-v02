@@ -91,14 +91,14 @@ tasks:
       - ./container/container-run.sh 'task setup'
 
   container:task:test:
-    desc: Run task test inside the selected harness image
+    desc: Run task setup and test inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'task test'
+      - ./container/container-run.sh './container/container-suite.sh task test'
 
   container:task:coverage:
-    desc: Run task coverage inside the selected harness image
+    desc: Run task setup and coverage inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'task coverage'
+      - ./container/container-run.sh './container/container-suite.sh task coverage'
 
   container:task:clean:
     desc: Run task clean inside the selected harness image
@@ -111,14 +111,14 @@ tasks:
       - ./container/container-run.sh 'just setup'
 
   container:just:test:
-    desc: Run just test inside the selected harness image
+    desc: Run just setup and test inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'just test'
+      - ./container/container-run.sh './container/container-suite.sh just test'
 
   container:just:coverage:
-    desc: Run just coverage inside the selected harness image
+    desc: Run just setup and coverage inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'just coverage'
+      - ./container/container-run.sh './container/container-suite.sh just coverage'
 
   container:just:clean:
     desc: Run just clean inside the selected harness image
@@ -128,51 +128,19 @@ tasks:
   container:setup:
     desc: Run both task setup and just setup inside one container
     cmds:
-      - >-
-        ./container/container-run.sh
-        'task_status=0; just_status=0;
-        echo "=== task setup ==="; task setup; task_status=$?;
-        echo "=== just setup ==="; just setup; just_status=$?;
-        echo "=== summary ===";
-        echo "task setup exit=$task_status";
-        echo "just setup exit=$just_status";
-        if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+      - ./container/container-run.sh './container/container-suite.sh both setup'
 
   container:test:
-    desc: Run both task test and just test inside one container
+    desc: Run both task and just setup/test inside one container
     cmds:
-      - >-
-        ./container/container-run.sh
-        'task_status=0; just_status=0;
-        echo "=== task test ==="; task test; task_status=$?;
-        echo "=== just test ==="; just test; just_status=$?;
-        echo "=== summary ===";
-        echo "task test exit=$task_status";
-        echo "just test exit=$just_status";
-        if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+      - ./container/container-run.sh './container/container-suite.sh both test'
 
   container:coverage:
-    desc: Run both task coverage and just coverage inside one container
+    desc: Run both task and just setup/coverage inside one container
     cmds:
-      - >-
-        ./container/container-run.sh
-        'task_status=0; just_status=0;
-        echo "=== task coverage ==="; task coverage; task_status=$?;
-        echo "=== just coverage ==="; just coverage; just_status=$?;
-        echo "=== summary ===";
-        echo "task coverage exit=$task_status";
-        echo "just coverage exit=$just_status";
-        if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+      - ./container/container-run.sh './container/container-suite.sh both coverage'
 
   container:clean:
     desc: Run both task clean and just clean inside one container
     cmds:
-      - >-
-        ./container/container-run.sh
-        'task_status=0; just_status=0;
-        echo "=== task clean ==="; task clean; task_status=$?;
-        echo "=== just clean ==="; just clean; just_status=$?;
-        echo "=== summary ===";
-        echo "task clean exit=$task_status";
-        echo "just clean exit=$just_status";
-        if [ "$task_status" -ne 0 ] || [ "$just_status" -ne 0 ]; then exit 1; fi'
+      - ./container/container-run.sh './container/container-suite.sh both clean'

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 container_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$container_dir/.." && pwd)"
 
 container_bin="${CONTAINER:-}"
 if [[ -z "$container_bin" ]]; then
@@ -22,4 +23,4 @@ exec "$container_bin" build \
   --arch "$arch" \
   --tag "$tag" \
   --file "$container_dir/Containerfile" \
-  "$container_dir"
+  "$repo_root"

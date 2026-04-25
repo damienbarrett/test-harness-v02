@@ -35,7 +35,7 @@ exec "$container_bin" run --rm -it \
   --env CODEX_ENV_PYTHON_VERSION="${CODEX_ENV_PYTHON_VERSION:-3.13}" \
   --env CODEX_ENV_NODE_VERSION="${CODEX_ENV_NODE_VERSION:-22}" \
   --env CODEX_ENV_RUST_VERSION="${CODEX_ENV_RUST_VERSION:-1.92.0}" \
-  --env CODEX_ENV_GO_VERSION="${CODEX_ENV_GO_VERSION:-1.25.1}" \
+  --env CODEX_ENV_GO_VERSION="${CODEX_ENV_GO_VERSION:-1.25.9}" \
   --volume "$repo_root:$workspace" \
   --workdir "$workspace" \
   "$image" \

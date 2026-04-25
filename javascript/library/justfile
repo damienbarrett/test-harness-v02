@@ -11,7 +11,7 @@ setup:
 
 # Run contract tests across Node, Bun, Deno, Chromium/Chrome, and WebKit
 test:
-    npx node --test tests/count.test.js tests/browser.test.js
+    npx node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js
     npx bun test tests/bun.test.js
     npx deno test --allow-read tests/deno.test.js
 
@@ -19,7 +19,7 @@ test:
 coverage:
     npx bun test tests/bun.test.js
     npx deno test --allow-read tests/deno.test.js
-    npx node --test --experimental-test-coverage \
+    npx node --test --test-timeout=60000 --experimental-test-coverage \
       --test-coverage-include='src/**' \
       --test-coverage-lines=100 \
       --test-coverage-branches=100 \

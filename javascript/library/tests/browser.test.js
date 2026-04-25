@@ -72,11 +72,18 @@ let baseUrl;
 
 before(async () => {
   server = createFixtureServer();
-  await new Promise((resolveServer) => {
+  await new Promise((resolveServer, rejectServer) => {
+    const onError = (error) => {
+      rejectServer(error);
+    };
+
+    server.once("error", onError);
     server.listen(0, "127.0.0.1", () => {
+      server.off("error", onError);
       const address = server.address();
       if (!address || typeof address === "string") {
-        throw new Error("Fixture server failed to bind");
+        rejectServer(new Error("Fixture server failed to bind"));
+        return;
       }
       baseUrl = `http://127.0.0.1:${address.port}`;
       resolveServer();
@@ -85,6 +92,10 @@ before(async () => {
 });
 
 after(async () => {
+  if (!server?.listening) {
+    return;
+  }
+
   await new Promise((resolveServer, rejectServer) => {
     server.close((error) => {
       if (error) {

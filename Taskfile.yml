@@ -55,33 +55,88 @@ tasks:
     cmds:
       - ./test-harness/check-runner-parity.py
 
+  image:bootstrap:
+    desc: Install container/image tools in the current checked-out repo environment
+    cmds:
+      - ./container/bootstrap-container-tools.sh
+
+  image:setup:
+    desc: Install all dependencies in the current checked-out repo environment
+    cmds:
+      - task: setup
+
+  image:test:
+    desc: Run all tests in the current checked-out repo environment
+    cmds:
+      - task: test
+
+  image:coverage:
+    desc: Run all coverage checks in the current checked-out repo environment
+    cmds:
+      - task: coverage
+
+  image:clean:
+    desc: Clean build artifacts in the current checked-out repo environment
+    cmds:
+      - task: clean
+
+  host:container:build:
+    desc: Host step - build an Apple container image containing this checkout
+    cmds:
+      - ./container/container-build.sh
+
+  host:container:shell:
+    desc: Host step - open a shell in the source-containing Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-shell.sh
+
+  host:container:task:
+    desc: Host step - run an arbitrary task command in the source-containing Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh 'task {{.CLI_ARGS}}'
+
+  host:container:just:
+    desc: Host step - run an arbitrary just command in the source-containing Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh 'just {{.CLI_ARGS}}'
+
+  host:container:test:
+    desc: Host step - run setup and tests in the source-containing Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh './container/container-suite.sh both test'
+
+  host:container:coverage:
+    desc: Host step - run setup and coverage in the source-containing Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh './container/container-suite.sh both coverage'
+
   container:healthcheck:
-    desc: Check Apple container runtime and the selected harness image
+    desc: Host step - check Apple container runtime and the selected harness image
     cmds:
       - ./container/container-healthcheck.sh
 
   container:pull:
-    desc: Pull the Codex universal image for native Apple silicon
+    desc: Host step - pull the Codex universal image for native Apple silicon
     cmds:
       - ./container/container-pull.sh
 
   container:build:
-    desc: Build the optional cached harness image
+    desc: Host step - build the source-containing harness image
     cmds:
       - ./container/container-build.sh
 
   container:shell:
-    desc: Open an interactive shell in the selected harness image
+    desc: Host step - open an interactive shell in the selected image with the host checkout bind-mounted
     cmds:
       - ./container/container-shell.sh
 
   container:task:
-    desc: Run an arbitrary task command inside the selected harness image
+    desc: Host step - run an arbitrary task command with the host checkout bind-mounted
     cmds:
       - ./container/container-run.sh 'task {{.CLI_ARGS}}'
 
   container:just:
-    desc: Run an arbitrary just command inside the selected harness image
+    desc: Host step - run an arbitrary just command with the host checkout bind-mounted
     cmds:
       - ./container/container-run.sh 'just {{.CLI_ARGS}}'
 

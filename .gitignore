@@ -7,6 +7,7 @@
 # Local tool caches and session artifacts
 .cache/
 .claude/settings.local.json
+.container-build-context*/
 .playwright-mcp/
 
 # Runtime dependency/build folders

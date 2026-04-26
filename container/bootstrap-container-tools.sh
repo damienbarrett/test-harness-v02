@@ -2,6 +2,10 @@
 set -euo pipefail
 
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$HOME/.local/share/mise/shims:$PATH"
+export CODEX_ENV_PYTHON_VERSION="${CODEX_ENV_PYTHON_VERSION:-3.13}"
+export CODEX_ENV_NODE_VERSION="${CODEX_ENV_NODE_VERSION:-22}"
+export CODEX_ENV_RUST_VERSION="${CODEX_ENV_RUST_VERSION:-1.92.0}"
+export CODEX_ENV_GO_VERSION="${CODEX_ENV_GO_VERSION:-1.25.9}"
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
 export CARGO_PROFILE_RELEASE_LTO="${CARGO_PROFILE_RELEASE_LTO:-false}"
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS="${CARGO_PROFILE_RELEASE_CODEGEN_UNITS:-16}"
@@ -43,6 +47,11 @@ install_go_bin() {
     go install "$package_ref"
   fi
 }
+
+if [[ -x /opt/codex/setup_universal.sh ]]; then
+  /opt/codex/setup_universal.sh
+  hash -r
+fi
 
 rustup target add wasm32-wasip1
 rustup component add llvm-tools-preview

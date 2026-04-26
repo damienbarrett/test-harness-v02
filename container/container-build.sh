@@ -18,9 +18,63 @@ fi
 
 arch="${CODEX_HARNESS_ARCH:-arm64}"
 tag="${CODEX_HARNESS_BUILD_TAG:-codex-harness:arm64}"
+build_context="${CODEX_HARNESS_BUILD_CONTEXT:-}"
 
-exec "$container_bin" build \
-  --arch "$arch" \
-  --tag "$tag" \
-  --file "$container_dir/Containerfile" \
-  "$repo_root"
+if [[ -z "$build_context" ]]; then
+  build_context="$(mktemp -d "$repo_root/.container-build-context.XXXXXX")"
+  trap 'rm -rf "$build_context"' EXIT
+
+  tar -C "$repo_root" \
+    --exclude='.dockerignore' \
+    --exclude='.DS_Store' \
+    --exclude='.git' \
+    --exclude='*/.git' \
+    --exclude='.cache' \
+    --exclude='*/.cache' \
+    --exclude='.container-build-context*' \
+    --exclude='*/.container-build-context*' \
+    --exclude='.claude' \
+    --exclude='*/.claude' \
+    --exclude='.playwright-mcp' \
+    --exclude='*/.playwright-mcp' \
+    --exclude='.task' \
+    --exclude='*/.task' \
+    --exclude='.coverage' \
+    --exclude='*/.coverage' \
+    --exclude='.pytest_cache' \
+    --exclude='*/.pytest_cache' \
+    --exclude='.venv' \
+    --exclude='*/.venv' \
+    --exclude='__pycache__' \
+    --exclude='*/__pycache__' \
+    --exclude='htmlcov' \
+    --exclude='*/htmlcov' \
+    --exclude='node_modules' \
+    --exclude='*/node_modules' \
+    --exclude='target' \
+    --exclude='*/target' \
+    --exclude='transpiled' \
+    --exclude='*/transpiled' \
+    --exclude='*.egg-info' \
+    --exclude='*.log' \
+    --exclude='*.profdata' \
+    --exclude='*.profraw' \
+    --exclude='*.pyc' \
+    --exclude='*.tmp' \
+    --exclude='*.temp' \
+    --exclude='*.wasm' \
+    --exclude='tmp' \
+    --exclude='*/tmp' \
+    --exclude='temp' \
+    --exclude='*/temp' \
+    -cf - . | tar -C "$build_context" -xf -
+fi
+
+(
+  cd "$build_context"
+  "$container_bin" build \
+    --arch "$arch" \
+    --tag "$tag" \
+    --file container/Containerfile \
+    .
+)

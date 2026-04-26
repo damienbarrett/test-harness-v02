@@ -22,6 +22,7 @@ memory="${CODEX_HARNESS_MEMORY:-12G}"
 workspace="${CODEX_HARNESS_WORKSPACE:-/workspace/v02}"
 bootstrap="${CODEX_HARNESS_BOOTSTRAP:-1}"
 cargo_target_dir="${CODEX_HARNESS_CARGO_TARGET_DIR:-/tmp/codex-harness-cargo-target}"
+workspace_mode="${CODEX_HARNESS_WORKSPACE_MODE:-bind}"
 
 if [[ "$bootstrap" == "1" || "$bootstrap" == "true" || "$bootstrap" == "yes" ]]; then
   command="./container/bootstrap-container-tools.sh && exec bash -l"
@@ -29,16 +30,30 @@ else
   command="exec bash -l"
 fi
 
-exec "$container_bin" run --rm -it \
-  --arch "$arch" \
-  --memory "$memory" \
-  --cpus "$cpus" \
-  --env CODEX_ENV_PYTHON_VERSION="${CODEX_ENV_PYTHON_VERSION:-3.13}" \
-  --env CODEX_ENV_NODE_VERSION="${CODEX_ENV_NODE_VERSION:-22}" \
-  --env CODEX_ENV_RUST_VERSION="${CODEX_ENV_RUST_VERSION:-1.92.0}" \
-  --env CODEX_ENV_GO_VERSION="${CODEX_ENV_GO_VERSION:-1.25.9}" \
-  --env CARGO_TARGET_DIR="$cargo_target_dir" \
-  --volume "$repo_root:$workspace" \
-  --workdir "$workspace" \
-  "$image" \
-  -lc "$command"
+declare -a run_args=(
+  run --rm -it
+  --arch "$arch"
+  --memory "$memory"
+  --cpus "$cpus"
+  --env CODEX_ENV_PYTHON_VERSION="${CODEX_ENV_PYTHON_VERSION:-3.13}"
+  --env CODEX_ENV_NODE_VERSION="${CODEX_ENV_NODE_VERSION:-22}"
+  --env CODEX_ENV_RUST_VERSION="${CODEX_ENV_RUST_VERSION:-1.92.0}"
+  --env CODEX_ENV_GO_VERSION="${CODEX_ENV_GO_VERSION:-1.25.9}"
+  --env CARGO_TARGET_DIR="$cargo_target_dir"
+)
+
+case "$workspace_mode" in
+  bind)
+    run_args+=(--volume "$repo_root:$workspace")
+    ;;
+  image)
+    ;;
+  *)
+    echo "Unsupported CODEX_HARNESS_WORKSPACE_MODE=$workspace_mode. Use 'bind' or 'image'." >&2
+    exit 64
+    ;;
+esac
+
+run_args+=(--workdir "$workspace" "$image" -lc "$command")
+
+exec "$container_bin" "${run_args[@]}"

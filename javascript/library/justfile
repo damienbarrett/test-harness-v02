@@ -26,6 +26,10 @@ coverage:
       --test-coverage-functions=100 \
       tests/count.test.js tests/browser.test.js
 
-# Remove build artifacts
+# Remove generated outputs while preserving dependency state
 clean:
+    rm -rf .coverage .nyc_output coverage output playwright-report test-results
+
+# Remove generated outputs and setup artifacts
+purge: clean
     rm -rf node_modules

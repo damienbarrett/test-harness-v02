@@ -46,6 +46,12 @@ tasks:
         tests/*.test.js
 
   clean:
-    desc: Remove build artifacts
+    desc: Remove generated outputs while preserving dependency state
     cmds:
-      - rm -rf node_modules transpiled task-component.wasm
+      - rm -rf .coverage .nyc_output coverage output test-results transpiled task-component.wasm
+
+  purge:
+    desc: Remove generated outputs and setup artifacts
+    cmds:
+      - task: clean
+      - rm -rf node_modules

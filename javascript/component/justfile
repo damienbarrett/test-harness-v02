@@ -30,6 +30,10 @@ coverage: build
       --test-coverage-functions=100 \
       tests/*.test.js
 
-# Remove build artifacts
+# Remove generated outputs while preserving dependency state
 clean:
-    rm -rf node_modules transpiled task-component.wasm
+    rm -rf .coverage .nyc_output coverage output test-results transpiled task-component.wasm
+
+# Remove generated outputs and setup artifacts
+purge: clean
+    rm -rf node_modules

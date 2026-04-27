@@ -45,6 +45,12 @@ tasks:
         tests/count.test.js tests/browser.test.js
 
   clean:
-    desc: Remove build artifacts
+    desc: Remove generated outputs while preserving dependency state
     cmds:
+      - rm -rf .coverage .nyc_output coverage output playwright-report test-results
+
+  purge:
+    desc: Remove generated outputs and setup artifacts
+    cmds:
+      - task: clean
       - rm -rf node_modules

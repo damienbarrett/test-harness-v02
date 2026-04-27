@@ -2,6 +2,7 @@
 .DS_Store
 
 # Task runner and local caches
+.harness/
 .task/
 .cache/
 

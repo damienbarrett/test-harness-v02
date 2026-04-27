@@ -3,12 +3,15 @@ version: "3"
 vars:
   TOOL_PATH:
     sh: printf '%s' "$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+  UV_CACHE_DIR:
+    sh: printf '%s' "${UV_CACHE_DIR:-.cache/uv}"
   WIT_DIR: "../../common/wit"
   OUTPUT_WASM: "task-component.wasm"
   BINDINGS_DIR: "bindings"
 
 env:
   PATH: "{{.TOOL_PATH}}"
+  UV_CACHE_DIR: "{{.UV_CACHE_DIR}}"
 
 tasks:
   default:
@@ -57,6 +60,12 @@ tasks:
       - uv run --locked --extra test pytest tests/ --cov --cov-report=term-missing
 
   clean:
-    desc: Remove build artifacts and caches
+    desc: Remove generated outputs while preserving dependency state
     cmds:
-      - rm -rf .venv __pycache__ .pytest_cache .coverage htmlcov tests/__pycache__ {{.BINDINGS_DIR}} {{.OUTPUT_WASM}}
+      - rm -rf __pycache__ .pytest_cache .coverage htmlcov output tests/__pycache__ {{.BINDINGS_DIR}} {{.OUTPUT_WASM}}
+
+  purge:
+    desc: Remove generated outputs and setup artifacts
+    cmds:
+      - task: clean
+      - rm -rf .venv

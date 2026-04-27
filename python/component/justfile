@@ -1,4 +1,5 @@
 export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
+export UV_CACHE_DIR := env_var_or_default('UV_CACHE_DIR', '.cache/uv')
 
 wit_dir := "../../common/wit"
 output_wasm := "task-component.wasm"
@@ -36,6 +37,10 @@ test: build
 coverage: build
     uv run --locked --extra test pytest tests/ --cov --cov-report=term-missing
 
-# Remove build artifacts and caches
+# Remove generated outputs while preserving dependency state
 clean:
-    rm -rf .venv __pycache__ .pytest_cache .coverage htmlcov tests/__pycache__ {{bindings_dir}} {{output_wasm}}
+    rm -rf __pycache__ .pytest_cache .coverage htmlcov output tests/__pycache__ {{bindings_dir}} {{output_wasm}}
+
+# Remove generated outputs and setup artifacts
+purge: clean
+    rm -rf .venv

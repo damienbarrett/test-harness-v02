@@ -56,9 +56,9 @@ function createFixtureServer() {
 
 const browserTargets = [
   {
-    label: process.platform === "linux" ? "Chromium" : "Chrome",
+    label: "Chromium",
     browserType: chromium,
-    launchOptions: process.platform === "linux" ? {} : { channel: "chrome" },
+    launchOptions: {},
   },
   {
     label: "WebKit",

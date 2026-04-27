@@ -1,4 +1,9 @@
 export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
+LOCAL_HARNESS_DIR := justfile_directory() + "/.harness"
+export HARNESS_DIR := env_var_or_default('HARNESS_DIR', LOCAL_HARNESS_DIR)
+export HARNESS_OUTPUT_DIR := env_var_or_default('HARNESS_OUTPUT_DIR', HARNESS_DIR + "/outputs")
+export HARNESS_CACHE_DIR := env_var_or_default('HARNESS_CACHE_DIR', HARNESS_DIR + "/cache")
+export NPM_CONFIG_CACHE := env_var_or_default('NPM_CONFIG_CACHE', HARNESS_CACHE_DIR + "/javascript/component/npm")
 
 wit_path := "../../common/wit/tasks.wit"
 world_name := "task-component"
@@ -32,8 +37,8 @@ coverage: build
 
 # Remove generated outputs while preserving dependency state
 clean:
-    rm -rf .coverage .nyc_output coverage output test-results transpiled task-component.wasm
+    rm -rf .coverage .nyc_output coverage output "$HARNESS_OUTPUT_DIR/javascript/component" test-results transpiled task-component.wasm
 
 # Remove generated outputs and setup artifacts
 purge: clean
-    rm -rf node_modules
+    rm -rf node_modules "$NPM_CONFIG_CACHE" "{{LOCAL_HARNESS_DIR}}"

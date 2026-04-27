@@ -10,6 +10,9 @@ includes:
   rust:
     taskfile: rust/Taskfile.yml
     dir: rust
+  test-harness:
+    taskfile: test-harness/Taskfile.yml
+    dir: test-harness
 
 tasks:
   default:
@@ -23,6 +26,7 @@ tasks:
       - task: python:setup
       - task: javascript:setup
       - task: rust:setup
+      - task: test-harness:setup
 
   test:
     desc: Run all tests
@@ -30,6 +34,7 @@ tasks:
       - task: python:test
       - task: javascript:test
       - task: rust:test
+      - task: test-harness:test
 
   coverage:
     desc: Run all tests with coverage
@@ -37,23 +42,35 @@ tasks:
       - task: python:coverage
       - task: javascript:coverage
       - task: rust:coverage
+      - task: test-harness:coverage
 
   clean:
-    desc: Clean all build artifacts
+    desc: Remove generated outputs while preserving dependency state
     cmds:
       - task: python:clean
       - task: javascript:clean
       - task: rust:clean
+      - task: test-harness:clean
+      - rm -rf .output output
+
+  purge:
+    desc: Remove generated outputs and setup artifacts
+    cmds:
+      - task: python:purge
+      - task: javascript:purge
+      - task: rust:purge
+      - task: test-harness:purge
+      - rm -rf .output output
 
   wasm:test:
     desc: Run unified WASM contract tests across all implementations
     cmds:
-      - ./test-harness/run-wasm-tests.py
+      - UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/run-wasm-tests.py
 
   check:runners:
     desc: Check Taskfile.yml and justfile parity
     cmds:
-      - ./test-harness/check-runner-parity.py
+      - UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/check-runner-parity.py
 
   image:bootstrap:
     desc: Install container/image tools in the current checked-out repo environment
@@ -76,9 +93,14 @@ tasks:
       - task: coverage
 
   image:clean:
-    desc: Clean build artifacts in the current checked-out repo environment
+    desc: Remove generated outputs in the current checked-out repo environment
     cmds:
       - task: clean
+
+  image:purge:
+    desc: Remove generated outputs and setup artifacts in the current checked-out repo environment
+    cmds:
+      - task: purge
 
   host:container:build:
     desc: Host step - build an Apple container image containing this checkout
@@ -109,6 +131,11 @@ tasks:
     desc: Host step - run setup and coverage in the source-containing Apple container image without a host bind mount
     cmds:
       - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh './container/container-suite.sh both coverage'
+
+  host:container:purge:
+    desc: Host step - purge generated outputs and setup artifacts in the source-containing Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh './container/container-suite.sh both purge'
 
   container:healthcheck:
     desc: Host step - check Apple container runtime and the selected harness image
@@ -160,6 +187,11 @@ tasks:
     cmds:
       - ./container/container-run.sh 'task clean'
 
+  container:task:purge:
+    desc: Run task purge inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'task purge'
+
   container:just:setup:
     desc: Run just setup inside the selected harness image
     cmds:
@@ -180,6 +212,11 @@ tasks:
     cmds:
       - ./container/container-run.sh 'just clean'
 
+  container:just:purge:
+    desc: Run just purge inside the selected harness image
+    cmds:
+      - ./container/container-run.sh 'just purge'
+
   container:setup:
     desc: Run both task setup and just setup inside one container
     cmds:
@@ -199,3 +236,8 @@ tasks:
     desc: Run both task clean and just clean inside one container
     cmds:
       - ./container/container-run.sh './container/container-suite.sh both clean'
+
+  container:purge:
+    desc: Run both task purge and just purge inside one container
+    cmds:
+      - ./container/container-run.sh './container/container-suite.sh both purge'

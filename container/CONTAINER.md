@@ -16,11 +16,15 @@ task image:bootstrap
 task image:setup
 task image:test
 task image:coverage
+task image:clean
+task image:purge
 
 just image-bootstrap
 just image-setup
 just image-test
 just image-coverage
+just image-clean
+just image-purge
 ```
 
 The shorter root commands are equivalent once the environment has the required tools:
@@ -29,10 +33,14 @@ The shorter root commands are equivalent once the environment has the required t
 task setup
 task test
 task coverage
+task clean
+task purge
 
 just setup
 just test
 just coverage
+just clean
+just purge
 ```
 
 `image:bootstrap` first runs `/opt/codex/setup_universal.sh` when that Codex universal setup script is present, then installs tools that are not guaranteed to exist in a base image, including `task`, `just`, `cargo-component`, and `cargo-llvm-cov`. It uses version probes so repeated runs do not reinstall tools unnecessarily.
@@ -65,10 +73,12 @@ Use this when the host should establish a container/image first, then run the sa
 task host:container:build
 task host:container:test
 task host:container:coverage
+task host:container:purge
 
 just host-container-build
 just host-container-test
 just host-container-coverage
+just host-container-purge
 ```
 
 `host:container:build` builds `codex-harness:arm64` from the repository root. The image contains:
@@ -111,9 +121,13 @@ Use this for local iteration when you want the container to run against the live
 ```sh
 task container:test
 task container:coverage
+task container:clean
+task container:purge
 
 just container-test
 just container-coverage
+just container-clean
+just container-purge
 ```
 
 These commands use `CODEX_HARNESS_WORKSPACE_MODE=bind` by default and mount:
@@ -123,6 +137,14 @@ These commands use `CODEX_HARNESS_WORKSPACE_MODE=bind` by default and mount:
 ```
 
 Bind-mounted runs are convenient for local editing, but they are not representative of cloud-hosted environments. Prefer the `host:container:*` commands when validating that the repository works without host filesystem sharing.
+
+## Clean and Purge
+
+`clean` is safe generated-output cleanup. It removes files such as coverage reports, transpiled output, generated bindings, and WASM artifacts while preserving dependency/setup state such as `.venv`, `node_modules`, Cargo caches, Playwright browser downloads, and future Nix store state.
+
+`purge` is destructive setup cleanup for the current layer. It runs the same generated-output cleanup and also removes repo-owned dependency/setup artifacts such as Python virtual environments and JavaScript `node_modules`. The next `setup` may be slower and may require network access unless caches have already been warmed.
+
+`common/` is a source-contract repository and does not expose lifecycle commands. `test-harness/` does expose lifecycle commands because it owns executable harness checks.
 
 ## Manual Apple Container Commands
 
@@ -147,6 +169,7 @@ Run a source-containing image without a host bind mount:
   --env CODEX_ENV_RUST_VERSION=1.92.0 \
   --env CODEX_ENV_GO_VERSION=1.25.9 \
   --env CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target \
+  --env UV_CACHE_DIR=/tmp/codex-harness-uv-cache \
   --workdir /workspace/v02 \
   codex-harness:arm64
 ```
@@ -163,6 +186,7 @@ Run the base Codex universal image with a host bind mount:
   --env CODEX_ENV_RUST_VERSION=1.92.0 \
   --env CODEX_ENV_GO_VERSION=1.25.9 \
   --env CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target \
+  --env UV_CACHE_DIR=/tmp/codex-harness-uv-cache \
   --volume "$PWD:/workspace/v02" \
   --workdir /workspace/v02 \
   ghcr.io/openai/codex-universal:latest
@@ -175,7 +199,10 @@ CODEX_HARNESS_MEMORY=16G CODEX_HARNESS_CPUS=10 task host:container:test
 CODEX_HARNESS_BUILD_TAG=codex-harness:dev task host:container:build
 CODEX_HARNESS_IMAGE=codex-harness:dev task host:container:test
 CODEX_HARNESS_CARGO_TARGET_DIR=/tmp/custom-cargo-target task container:test
+CODEX_HARNESS_UV_CACHE_DIR=/tmp/custom-uv-cache task container:test
 CONTAINER=/usr/local/bin/container just container-healthcheck
 ```
 
 `CARGO_TARGET_DIR` defaults to `/tmp/codex-harness-cargo-target` in container-hosted runs. That keeps Rust build artifacts out of a mounted checkout and keeps container builds isolated from host `target/` directories.
+
+`UV_CACHE_DIR` defaults to `/tmp/codex-harness-uv-cache` in container-hosted runs. Direct Python and test-harness lifecycle commands default to a gitignored `.cache/uv` under the repo that owns the command, so they do not depend on the host-global uv cache under the user's home directory.

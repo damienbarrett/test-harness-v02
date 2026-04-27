@@ -22,6 +22,7 @@ memory="${CODEX_HARNESS_MEMORY:-12G}"
 workspace="${CODEX_HARNESS_WORKSPACE:-/workspace/v02}"
 bootstrap="${CODEX_HARNESS_BOOTSTRAP:-1}"
 cargo_target_dir="${CODEX_HARNESS_CARGO_TARGET_DIR:-/tmp/codex-harness-cargo-target}"
+uv_cache_dir="${CODEX_HARNESS_UV_CACHE_DIR:-/tmp/codex-harness-uv-cache}"
 workspace_mode="${CODEX_HARNESS_WORKSPACE_MODE:-bind}"
 
 if [[ "$bootstrap" == "1" || "$bootstrap" == "true" || "$bootstrap" == "yes" ]]; then
@@ -40,6 +41,7 @@ declare -a run_args=(
   --env CODEX_ENV_RUST_VERSION="${CODEX_ENV_RUST_VERSION:-1.92.0}"
   --env CODEX_ENV_GO_VERSION="${CODEX_ENV_GO_VERSION:-1.25.9}"
   --env CARGO_TARGET_DIR="$cargo_target_dir"
+  --env UV_CACHE_DIR="$uv_cache_dir"
 )
 
 case "$workspace_mode" in

@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: container-suite.sh <task|just|both> <setup|test|coverage|clean>
+Usage: container-suite.sh <task|just|both> <setup|test|coverage|clean|purge>
 
 Runs harness commands inside one container process. The test and coverage
 actions run setup first so ephemeral containers keep setup artifacts such as
@@ -28,7 +28,7 @@ case "$scope" in
 esac
 
 case "$action" in
-  setup | test | coverage | clean) ;;
+  setup | test | coverage | clean | purge) ;;
   *)
     usage
     exit 64
@@ -65,8 +65,8 @@ run_runner() {
       run_step "$runner setup" "$runner" setup
       run_step "$runner $action" "$runner" "$action"
       ;;
-    clean)
-      run_step "$runner clean" "$runner" clean
+    clean | purge)
+      run_step "$runner $action" "$runner" "$action"
       ;;
   esac
 }

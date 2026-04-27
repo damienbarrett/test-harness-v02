@@ -5,24 +5,29 @@ default:
     @just --list
 
 # Install all dependencies
-setup: python-setup javascript-setup rust-setup
+setup: python-setup javascript-setup rust-setup test-harness-setup
 
 # Run all tests
-test: python-test javascript-test rust-test
+test: python-test javascript-test rust-test test-harness-test
 
 # Run all tests with coverage
-coverage: python-coverage javascript-coverage rust-coverage
+coverage: python-coverage javascript-coverage rust-coverage test-harness-coverage
 
-# Clean all build artifacts
-clean: python-clean javascript-clean rust-clean
+# Remove generated outputs while preserving dependency state
+clean: python-clean javascript-clean rust-clean test-harness-clean
+    rm -rf .output output
+
+# Remove generated outputs and setup artifacts
+purge: python-purge javascript-purge rust-purge test-harness-purge
+    rm -rf .output output
 
 # Run unified WASM contract tests across all implementations
 wasm-test:
-    ./test-harness/run-wasm-tests.py
+    UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/run-wasm-tests.py
 
 # Check Taskfile.yml and justfile parity
 check-runners:
-    ./test-harness/check-runner-parity.py
+    UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/check-runner-parity.py
 
 # Install container/image tools in the current checked-out repo environment
 image-bootstrap:
@@ -37,8 +42,11 @@ image-test: test
 # Run all coverage checks in the current checked-out repo environment
 image-coverage: coverage
 
-# Clean build artifacts in the current checked-out repo environment
+# Remove generated outputs in the current checked-out repo environment
 image-clean: clean
+
+# Remove generated outputs and setup artifacts in the current checked-out repo environment
+image-purge: purge
 
 # Host step: build an Apple container image containing this checkout
 host-container-build:
@@ -63,6 +71,10 @@ host-container-test:
 # Host step: run setup and coverage in the source-containing Apple container image without a host bind mount
 host-container-coverage:
     CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh './container/container-suite.sh both coverage'
+
+# Host step: purge generated outputs and setup artifacts in the source-containing Apple container image without a host bind mount
+host-container-purge:
+    CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh './container/container-suite.sh both purge'
 
 # Host step: check Apple container runtime and the selected harness image
 container-healthcheck:
@@ -104,6 +116,10 @@ container-task-coverage:
 container-task-clean:
     ./container/container-run.sh 'task clean'
 
+# Run task purge inside the selected harness image
+container-task-purge:
+    ./container/container-run.sh 'task purge'
+
 # Run just setup inside the selected harness image
 container-just-setup:
     ./container/container-run.sh 'just setup'
@@ -120,6 +136,10 @@ container-just-coverage:
 container-just-clean:
     ./container/container-run.sh 'just clean'
 
+# Run just purge inside the selected harness image
+container-just-purge:
+    ./container/container-run.sh 'just purge'
+
 # Run both task setup and just setup inside one container
 container-setup:
     ./container/container-run.sh './container/container-suite.sh both setup'
@@ -135,6 +155,10 @@ container-coverage:
 # Run both task clean and just clean inside one container
 container-clean:
     ./container/container-run.sh './container/container-suite.sh both clean'
+
+# Run both task purge and just purge inside one container
+container-purge:
+    ./container/container-run.sh './container/container-suite.sh both purge'
 
 # Install Python dependencies
 python-setup:
@@ -183,3 +207,35 @@ javascript-clean:
 # Clean Rust build artifacts
 rust-clean:
     just rust/clean
+
+# Install test harness dependencies
+test-harness-setup:
+    just test-harness/setup
+
+# Run test harness self-checks
+test-harness-test:
+    just test-harness/test
+
+# Run test harness coverage checks
+test-harness-coverage:
+    just test-harness/coverage
+
+# Clean test harness generated outputs
+test-harness-clean:
+    just test-harness/clean
+
+# Purge Python setup artifacts
+python-purge:
+    just python/purge
+
+# Purge JavaScript setup artifacts
+javascript-purge:
+    just javascript/purge
+
+# Purge Rust setup artifacts
+rust-purge:
+    just rust/purge
+
+# Purge test harness setup artifacts
+test-harness-purge:
+    just test-harness/purge

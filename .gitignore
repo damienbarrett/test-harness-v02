@@ -11,6 +11,8 @@
 .playwright-mcp/
 
 # Runtime dependency/build folders
+.output/
+output/
 .venv/
 node_modules/
 target/

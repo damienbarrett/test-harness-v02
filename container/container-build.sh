@@ -31,6 +31,8 @@ if [[ -z "$build_context" ]]; then
     --exclude='*/.git' \
     --exclude='.cache' \
     --exclude='*/.cache' \
+    --exclude='.harness' \
+    --exclude='*/.harness' \
     --exclude='.container-build-context*' \
     --exclude='*/.container-build-context*' \
     --exclude='.claude' \

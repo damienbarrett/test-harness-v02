@@ -140,9 +140,19 @@ Bind-mounted runs are convenient for local editing, but they are not representat
 
 ## Clean and Purge
 
-`clean` is safe generated-output cleanup. It removes files such as coverage reports, transpiled output, generated bindings, and WASM artifacts while preserving dependency/setup state such as `.venv`, `node_modules`, Cargo caches, Playwright browser downloads, and future Nix store state.
+`clean` is safe generated-output cleanup. It removes files such as coverage reports, transpiled output, generated bindings, WASM artifacts, and `.harness/outputs` while preserving dependency/setup state such as `.venv`, `node_modules`, Cargo caches, Playwright browser downloads, and future Nix store state.
 
-`purge` is destructive setup cleanup for the current layer. It runs the same generated-output cleanup and also removes repo-owned dependency/setup artifacts such as Python virtual environments and JavaScript `node_modules`. The next `setup` may be slower and may require network access unless caches have already been warmed.
+`purge` is destructive setup cleanup for the current layer. It runs the same generated-output cleanup and also removes repo-owned dependency/setup artifacts such as Python virtual environments, JavaScript `node_modules`, and `.harness/cache`. The next `setup` may be slower and may require network access unless caches have already been warmed.
+
+Ignored workspace state is organized by cleanup behavior:
+
+```text
+.harness/
+  outputs/  # removed by clean and purge
+  cache/    # removed by purge
+```
+
+Direct local runs default `HARNESS_DIR` to `<repo>/.harness`. Apple container wrapper scripts default `HARNESS_DIR` to `/tmp/codex-harness`, which keeps cache/build state inside the guest even for bind-mounted runs.
 
 `common/` is a source-contract repository and does not expose lifecycle commands. `test-harness/` does expose lifecycle commands because it owns executable harness checks.
 
@@ -168,8 +178,11 @@ Run a source-containing image without a host bind mount:
   --env CODEX_ENV_NODE_VERSION=22 \
   --env CODEX_ENV_RUST_VERSION=1.92.0 \
   --env CODEX_ENV_GO_VERSION=1.25.9 \
-  --env CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target \
-  --env UV_CACHE_DIR=/tmp/codex-harness-uv-cache \
+  --env HARNESS_DIR=/tmp/codex-harness \
+  --env HARNESS_OUTPUT_DIR=/tmp/codex-harness/outputs \
+  --env HARNESS_CACHE_DIR=/tmp/codex-harness/cache \
+  --env CARGO_TARGET_DIR=/tmp/codex-harness/outputs/rust/cargo-target \
+  --env UV_CACHE_DIR=/tmp/codex-harness/cache/uv \
   --workdir /workspace/v02 \
   codex-harness:arm64
 ```
@@ -185,8 +198,11 @@ Run the base Codex universal image with a host bind mount:
   --env CODEX_ENV_NODE_VERSION=22 \
   --env CODEX_ENV_RUST_VERSION=1.92.0 \
   --env CODEX_ENV_GO_VERSION=1.25.9 \
-  --env CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target \
-  --env UV_CACHE_DIR=/tmp/codex-harness-uv-cache \
+  --env HARNESS_DIR=/tmp/codex-harness \
+  --env HARNESS_OUTPUT_DIR=/tmp/codex-harness/outputs \
+  --env HARNESS_CACHE_DIR=/tmp/codex-harness/cache \
+  --env CARGO_TARGET_DIR=/tmp/codex-harness/outputs/rust/cargo-target \
+  --env UV_CACHE_DIR=/tmp/codex-harness/cache/uv \
   --volume "$PWD:/workspace/v02" \
   --workdir /workspace/v02 \
   ghcr.io/openai/codex-universal:latest
@@ -198,11 +214,12 @@ Run the base Codex universal image with a host bind mount:
 CODEX_HARNESS_MEMORY=16G CODEX_HARNESS_CPUS=10 task host:container:test
 CODEX_HARNESS_BUILD_TAG=codex-harness:dev task host:container:build
 CODEX_HARNESS_IMAGE=codex-harness:dev task host:container:test
-CODEX_HARNESS_CARGO_TARGET_DIR=/tmp/custom-cargo-target task container:test
-CODEX_HARNESS_UV_CACHE_DIR=/tmp/custom-uv-cache task container:test
+CODEX_HARNESS_DIR=/tmp/custom-harness-state task container:test
+CODEX_HARNESS_CARGO_TARGET_DIR=/tmp/custom-harness-state/outputs/rust/cargo-target task container:test
+CODEX_HARNESS_UV_CACHE_DIR=/tmp/custom-harness-state/cache/uv task container:test
 CONTAINER=/usr/local/bin/container just container-healthcheck
 ```
 
-`CARGO_TARGET_DIR` defaults to `/tmp/codex-harness-cargo-target` in container-hosted runs. That keeps Rust build artifacts out of a mounted checkout and keeps container builds isolated from host `target/` directories.
+`CARGO_TARGET_DIR` defaults to `/tmp/codex-harness/outputs/rust/cargo-target` in container-hosted runs. That keeps Rust build artifacts out of a mounted checkout, keeps container builds isolated from host `target/` directories, and lets `clean` remove compiled outputs without touching dependency/setup caches.
 
-`UV_CACHE_DIR` defaults to `/tmp/codex-harness-uv-cache` in container-hosted runs. Direct Python and test-harness lifecycle commands default to a gitignored `.cache/uv` under the repo that owns the command, so they do not depend on the host-global uv cache under the user's home directory.
+`UV_CACHE_DIR` defaults to `/tmp/codex-harness/cache/uv` in container-hosted runs. Direct Python and test-harness lifecycle commands default to a gitignored `.harness/cache` path, so they do not depend on the host-global uv cache under the user's home directory.

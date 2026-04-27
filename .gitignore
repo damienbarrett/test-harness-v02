@@ -5,6 +5,7 @@
 .task/
 
 # Local tool caches and session artifacts
+.harness/
 .cache/
 .claude/settings.local.json
 .container-build-context*/

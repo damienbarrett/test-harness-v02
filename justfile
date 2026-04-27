@@ -1,33 +1,56 @@
 export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('HOME') + "/.local/share/mise/shims:" + env_var('PATH')
+export HARNESS_DIR := env_var_or_default('HARNESS_DIR', justfile_directory() + "/.harness")
+export HARNESS_OUTPUT_DIR := env_var_or_default('HARNESS_OUTPUT_DIR', HARNESS_DIR + "/outputs")
+export HARNESS_CACHE_DIR := env_var_or_default('HARNESS_CACHE_DIR', HARNESS_DIR + "/cache")
 
 # List available commands
 default:
     @just --list
 
 # Install all dependencies
-setup: python-setup javascript-setup rust-setup test-harness-setup
+setup:
+    just python/setup
+    just javascript/setup
+    just rust/setup
+    just test-harness/setup
 
 # Run all tests
-test: python-test javascript-test rust-test test-harness-test
+test:
+    just python/test
+    just javascript/test
+    just rust/test
+    just test-harness/test
 
 # Run all tests with coverage
-coverage: python-coverage javascript-coverage rust-coverage test-harness-coverage
+coverage:
+    just python/coverage
+    just javascript/coverage
+    just rust/coverage
+    just test-harness/coverage
 
 # Remove generated outputs while preserving dependency state
-clean: python-clean javascript-clean rust-clean test-harness-clean
-    rm -rf .output output
+clean:
+    just python/clean
+    just javascript/clean
+    just rust/clean
+    just test-harness/clean
+    rm -rf "$HARNESS_OUTPUT_DIR" .output output
 
 # Remove generated outputs and setup artifacts
-purge: python-purge javascript-purge rust-purge test-harness-purge
-    rm -rf .output output
+purge:
+    just python/purge
+    just javascript/purge
+    just rust/purge
+    just test-harness/purge
+    rm -rf "$HARNESS_DIR" .output output
 
 # Run unified WASM contract tests across all implementations
 wasm-test:
-    UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/run-wasm-tests.py
+    UV_CACHE_DIR="${UV_CACHE_DIR:-$HARNESS_CACHE_DIR/test-harness/uv}" ./test-harness/run-wasm-tests.py
 
 # Check Taskfile.yml and justfile parity
 check-runners:
-    UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/check-runner-parity.py
+    UV_CACHE_DIR="${UV_CACHE_DIR:-$HARNESS_CACHE_DIR/test-harness/uv}" ./test-harness/check-runner-parity.py
 
 # Install container/image tools in the current checked-out repo environment
 image-bootstrap:

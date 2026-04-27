@@ -23,54 +23,54 @@ tasks:
   setup:
     desc: Install all dependencies
     cmds:
-      - task: python:setup
-      - task: javascript:setup
-      - task: rust:setup
-      - task: test-harness:setup
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d python setup
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d javascript setup
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d rust setup
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d test-harness setup
 
   test:
     desc: Run all tests
     cmds:
-      - task: python:test
-      - task: javascript:test
-      - task: rust:test
-      - task: test-harness:test
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d python test
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d javascript test
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d rust test
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d test-harness test
 
   coverage:
     desc: Run all tests with coverage
     cmds:
-      - task: python:coverage
-      - task: javascript:coverage
-      - task: rust:coverage
-      - task: test-harness:coverage
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d python coverage
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d javascript coverage
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d rust coverage
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d test-harness coverage
 
   clean:
     desc: Remove generated outputs while preserving dependency state
     cmds:
-      - task: python:clean
-      - task: javascript:clean
-      - task: rust:clean
-      - task: test-harness:clean
-      - rm -rf .output output
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d python clean
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d javascript clean
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d rust clean
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d test-harness clean
+      - rm -rf "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" .output output
 
   purge:
     desc: Remove generated outputs and setup artifacts
     cmds:
-      - task: python:purge
-      - task: javascript:purge
-      - task: rust:purge
-      - task: test-harness:purge
-      - rm -rf .output output
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d python purge
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d javascript purge
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d rust purge
+      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d test-harness purge
+      - rm -rf "${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" .output output
 
   wasm:test:
     desc: Run unified WASM contract tests across all implementations
     cmds:
-      - UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/run-wasm-tests.py
+      - UV_CACHE_DIR="${UV_CACHE_DIR:-${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}/test-harness/uv}" ./test-harness/run-wasm-tests.py
 
   check:runners:
     desc: Check Taskfile.yml and justfile parity
     cmds:
-      - UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/check-runner-parity.py
+      - UV_CACHE_DIR="${UV_CACHE_DIR:-${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}/test-harness/uv}" ./test-harness/check-runner-parity.py
 
   image:bootstrap:
     desc: Install container/image tools in the current checked-out repo environment

@@ -6,6 +6,7 @@
 .cache/
 
 # Cargo build outputs
+output/
 library/target/
 component/target/
 

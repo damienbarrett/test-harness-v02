@@ -13,8 +13,11 @@ test: library-test component-test
 # Run all tests with coverage
 coverage: library-coverage component-coverage
 
-# Clean all build artifacts
+# Remove generated outputs while preserving dependency state
 clean: library-clean component-clean
+
+# Remove generated outputs and setup artifacts
+purge: library-purge component-purge
 
 # Install library dependencies
 library-setup:
@@ -51,3 +54,11 @@ library-clean:
 # Clean component build artifacts
 component-clean:
     just component/clean
+
+# Purge library setup artifacts
+library-purge:
+    just library/purge
+
+# Purge component setup artifacts
+component-purge:
+    just component/purge

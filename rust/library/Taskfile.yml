@@ -35,6 +35,11 @@ tasks:
       - cargo llvm-cov --locked --offline --tests --fail-under-lines 100 --fail-under-functions 100 --fail-under-regions 100
 
   clean:
-    desc: Remove build artifacts
+    desc: Remove generated outputs while preserving dependency state
     cmds:
       - cargo clean
+
+  purge:
+    desc: Remove generated outputs and setup artifacts
+    cmds:
+      - task: clean

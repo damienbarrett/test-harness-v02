@@ -33,7 +33,13 @@ tasks:
       - task: component:coverage
 
   clean:
-    desc: Clean all build artifacts
+    desc: Remove generated outputs while preserving dependency state
     cmds:
       - task: library:clean
       - task: component:clean
+
+  purge:
+    desc: Remove generated outputs and setup artifacts
+    cmds:
+      - task: library:purge
+      - task: component:purge

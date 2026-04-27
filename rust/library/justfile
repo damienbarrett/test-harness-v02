@@ -19,6 +19,9 @@ coverage:
     cargo llvm-cov clean --workspace
     cargo llvm-cov --locked --offline --tests --fail-under-lines 100 --fail-under-functions 100 --fail-under-regions 100
 
-# Remove build artifacts
+# Remove generated outputs while preserving dependency state
 clean:
     cargo clean
+
+# Remove generated outputs and setup artifacts
+purge: clean

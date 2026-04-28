@@ -52,18 +52,26 @@ nixpkgs branch.
 
 ## Status — what's done, what's next
 
-Done in this change:
+Done:
 
-- Per-sub-repo `flake.nix` files exist and provide the toolchains above.
+- Per-sub-repo `flake.nix` + `flake.lock` exist and provide the toolchains
+  above. Locks pin nixpkgs to `nixos-25.11 @ a4bf066`.
 - `container/flake.nix` provides task + just.
+- The rust language Taskfile/justfile no longer self-installs
+  `cargo-llvm-cov`, `cargo-component`, `rustup target add wasm32-wasip1`,
+  or `rustup component add llvm-tools-preview` — those are owned by the
+  Nix flake (preferred) or the imperative bootstrap (fallback).
+- `cargo-llvm-cov` is `0.6.20` everywhere (matches what nixpkgs 25.11
+  ships; was `0.6.21` in the imperative bootstrap before).
 
 Deferred (separate change):
 
 - Replace the imperative `cargo install` / `go install` / `rustup` blocks
   in `container/Containerfile` and `container/bootstrap-container-tools.sh`
-  with a Nix install + `nix develop` entry. Doing this requires rewiring
-  the existing `image-*` / `container-*` orchestration so that direct
-  invocation outside Nix does not regress.
+  with a Nix install + `nix develop` entry. The bootstrap script is
+  still the fallback that makes direct (non-Nix) invocation work; once
+  orchestration enters `nix develop` for every entry point, the fallback
+  can go.
 - Remove the `~/.local/bin:~/.cargo/bin:~/go/bin` PATH preamble from every
   Taskfile/justfile. The Nix shell sets PATH correctly, so the preamble
   becomes redundant — but only once all entry points go through

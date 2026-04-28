@@ -59,7 +59,7 @@ rustup component add llvm-tools-preview
 
 install_cargo_bin just just 1.49.0
 install_cargo_bin cargo-component cargo-component 0.21.1
-install_cargo_bin cargo-llvm-cov cargo-llvm-cov 0.6.21 cargo llvm-cov --version
+install_cargo_bin cargo-llvm-cov cargo-llvm-cov 0.6.20 cargo llvm-cov --version
 install_go_bin task github.com/go-task/task/v3/cmd/task@v3.50.0 3.50.0
 
 echo "Container harness tools are ready."

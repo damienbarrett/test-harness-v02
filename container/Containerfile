@@ -17,7 +17,7 @@ RUN /opt/codex/setup_universal.sh \
     && rustup target add wasm32-wasip1 \
     && rustup component add llvm-tools-preview \
     && cargo install cargo-component --locked --version 0.21.1 \
-    && cargo install cargo-llvm-cov --locked --version 0.6.21 \
+    && cargo install cargo-llvm-cov --locked --version 0.6.20 \
     && cargo install just --locked --version 1.49.0 \
     && go install github.com/go-task/task/v3/cmd/task@v3.50.0
 

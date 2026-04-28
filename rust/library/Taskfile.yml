@@ -17,11 +17,6 @@ tasks:
     desc: Install dependencies
     cmds:
       - cargo fetch --locked
-      - rustup component add llvm-tools-preview
-      - |
-        if ! cargo llvm-cov --version >/dev/null 2>&1; then
-          cargo install cargo-llvm-cov --locked --version 0.6.21
-        fi
 
   test:
     desc: Run tests

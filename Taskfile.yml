@@ -1,76 +1,117 @@
 version: "3"
 
-includes:
-  python:
-    taskfile: python/Taskfile.yml
-    dir: python
-  javascript:
-    taskfile: javascript/Taskfile.yml
-    dir: javascript
-  rust:
-    taskfile: rust/Taskfile.yml
-    dir: rust
-  test-harness:
-    taskfile: test-harness/Taskfile.yml
-    dir: test-harness
-
+# Each top-level lifecycle verb enters the sub-repo's Nix dev shell so the
+# language Taskfile sees its declared toolchain on PATH. The per-language
+# wrapper tasks (python-setup, javascript-setup, ...) mirror the justfile
+# pattern so check:runners parity is preserved. Language sub-repo Taskfiles
+# remain accessible directly via `cd <lang> && task <verb>` (autonomous).
 tasks:
   default:
     cmds:
       - task --list
     silent: true
 
+  provision:
+    desc: Provision OS-level prerequisites (Nix, Playwright system libs + browsers)
+    cmds:
+      - ./container/bootstrap-container-tools.sh
+
   setup:
     desc: Install all dependencies
     cmds:
-      - task: python:setup
-      - task: javascript:setup
-      - task: rust:setup
-      - task: test-harness:setup
+      - task: python-setup
+      - task: javascript-setup
+      - task: rust-setup
+      - task: test-harness-setup
 
   test:
     desc: Run all tests
     cmds:
-      - task: python:test
-      - task: javascript:test
-      - task: rust:test
-      - task: test-harness:test
+      - task: python-test
+      - task: javascript-test
+      - task: rust-test
+      - task: test-harness-test
 
   coverage:
     desc: Run all tests with coverage
     cmds:
-      - task: python:coverage
-      - task: javascript:coverage
-      - task: rust:coverage
-      - task: test-harness:coverage
+      - task: python-coverage
+      - task: javascript-coverage
+      - task: rust-coverage
+      - task: test-harness-coverage
 
   clean:
     desc: Remove generated outputs while preserving dependency state
     cmds:
-      - task: python:clean
-      - task: javascript:clean
-      - task: rust:clean
-      - task: test-harness:clean
+      - task: python-clean
+      - task: javascript-clean
+      - task: rust-clean
+      - task: test-harness-clean
       - rm -rf .output output
 
   purge:
     desc: Remove generated outputs and setup artifacts
     cmds:
-      - task: python:purge
-      - task: javascript:purge
-      - task: rust:purge
-      - task: test-harness:purge
+      - task: python-purge
+      - task: javascript-purge
+      - task: rust-purge
+      - task: test-harness-purge
       - rm -rf .output output
+
+  python-setup:
+    cmds: [cd python && nix develop --command task setup]
+  javascript-setup:
+    cmds: [cd javascript && nix develop --command task setup]
+  rust-setup:
+    cmds: [cd rust && nix develop --command task setup]
+  test-harness-setup:
+    cmds: [cd test-harness && nix develop --command task setup]
+
+  python-test:
+    cmds: [cd python && nix develop --command task test]
+  javascript-test:
+    cmds: [cd javascript && nix develop --command task test]
+  rust-test:
+    cmds: [cd rust && nix develop --command task test]
+  test-harness-test:
+    cmds: [cd test-harness && nix develop --command task test]
+
+  python-coverage:
+    cmds: [cd python && nix develop --command task coverage]
+  javascript-coverage:
+    cmds: [cd javascript && nix develop --command task coverage]
+  rust-coverage:
+    cmds: [cd rust && nix develop --command task coverage]
+  test-harness-coverage:
+    cmds: [cd test-harness && nix develop --command task coverage]
+
+  python-clean:
+    cmds: [cd python && nix develop --command task clean]
+  javascript-clean:
+    cmds: [cd javascript && nix develop --command task clean]
+  rust-clean:
+    cmds: [cd rust && nix develop --command task clean]
+  test-harness-clean:
+    cmds: [cd test-harness && nix develop --command task clean]
+
+  python-purge:
+    cmds: [cd python && nix develop --command task purge]
+  javascript-purge:
+    cmds: [cd javascript && nix develop --command task purge]
+  rust-purge:
+    cmds: [cd rust && nix develop --command task purge]
+  test-harness-purge:
+    cmds: [cd test-harness && nix develop --command task purge]
 
   wasm:test:
     desc: Run unified WASM contract tests across all implementations
     cmds:
-      - UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/run-wasm-tests.py
+      - cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./run-wasm-tests.py'
 
   check:runners:
     desc: Check Taskfile.yml and justfile parity
     cmds:
-      - UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/check-runner-parity.py
+      - cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./check-runner-parity.py'
 
   image:bootstrap:
     desc: Install container/image tools in the current checked-out repo environment
@@ -141,6 +182,11 @@ tasks:
     desc: Host step - check Apple container runtime and the selected harness image
     cmds:
       - ./container/container-healthcheck.sh
+
+  container:prune-all:
+    desc: Host step - reclaim disk space (prune dangling images + remove image builder)
+    cmds:
+      - ./container/container-prune-all.sh
 
   container:pull:
     desc: Host step - pull the Codex universal image for native Apple silicon

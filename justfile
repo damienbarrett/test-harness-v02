@@ -1,8 +1,10 @@
-export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('HOME') + "/.local/share/mise/shims:" + env_var('PATH')
-
 # List available commands
 default:
     @just --list
+
+# Provision OS-level prerequisites (Nix, Playwright system libs + browsers)
+provision:
+    ./container/bootstrap-container-tools.sh
 
 # Install all dependencies
 setup: python-setup javascript-setup rust-setup test-harness-setup
@@ -23,11 +25,11 @@ purge: python-purge javascript-purge rust-purge test-harness-purge
 
 # Run unified WASM contract tests across all implementations
 wasm-test:
-    UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/run-wasm-tests.py
+    cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./run-wasm-tests.py'
 
 # Check Taskfile.yml and justfile parity
 check-runners:
-    UV_CACHE_DIR="${UV_CACHE_DIR:-test-harness/.cache/uv}" ./test-harness/check-runner-parity.py
+    cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./check-runner-parity.py'
 
 # Install container/image tools in the current checked-out repo environment
 image-bootstrap:
@@ -79,6 +81,10 @@ host-container-purge:
 # Host step: check Apple container runtime and the selected harness image
 container-healthcheck:
     ./container/container-healthcheck.sh
+
+# Host step: reclaim disk space (prune dangling images + remove image builder)
+container-prune-all:
+    ./container/container-prune-all.sh
 
 # Host step: pull the Codex universal image for native Apple silicon
 container-pull:
@@ -160,82 +166,85 @@ container-clean:
 container-purge:
     ./container/container-run.sh './container/container-suite.sh both purge'
 
+# Each per-language recipe enters its sub-repo's Nix dev shell so the
+# sub-repo's justfile sees its declared toolchain on PATH.
+
 # Install Python dependencies
 python-setup:
-    just python/setup
+    cd python && nix develop --command just setup
 
 # Install JavaScript dependencies
 javascript-setup:
-    just javascript/setup
+    cd javascript && nix develop --command just setup
 
 # Install Rust dependencies
 rust-setup:
-    just rust/setup
+    cd rust && nix develop --command just setup
 
 # Run Python tests
 python-test:
-    just python/test
+    cd python && nix develop --command just test
 
 # Run JavaScript tests
 javascript-test:
-    just javascript/test
+    cd javascript && nix develop --command just test
 
 # Run Rust tests
 rust-test:
-    just rust/test
+    cd rust && nix develop --command just test
 
 # Run Python tests with coverage
 python-coverage:
-    just python/coverage
+    cd python && nix develop --command just coverage
 
 # Run JavaScript tests with coverage
 javascript-coverage:
-    just javascript/coverage
+    cd javascript && nix develop --command just coverage
 
 # Run Rust tests with coverage
 rust-coverage:
-    just rust/coverage
+    cd rust && nix develop --command just coverage
 
 # Clean Python build artifacts
 python-clean:
-    just python/clean
+    cd python && nix develop --command just clean
 
 # Clean JavaScript build artifacts
 javascript-clean:
-    just javascript/clean
+    cd javascript && nix develop --command just clean
 
 # Clean Rust build artifacts
 rust-clean:
-    just rust/clean
+    cd rust && nix develop --command just clean
 
 # Install test harness dependencies
 test-harness-setup:
-    just test-harness/setup
+    cd test-harness && nix develop --command just setup
 
 # Run test harness self-checks
 test-harness-test:
-    just test-harness/test
+    cd test-harness && nix develop --command just test
 
 # Run test harness coverage checks
 test-harness-coverage:
-    just test-harness/coverage
+    cd test-harness && nix develop --command just coverage
 
 # Clean test harness generated outputs
 test-harness-clean:
-    just test-harness/clean
+    cd test-harness && nix develop --command just clean
 
 # Purge Python setup artifacts
 python-purge:
-    just python/purge
+    cd python && nix develop --command just purge
 
 # Purge JavaScript setup artifacts
 javascript-purge:
-    just javascript/purge
+    cd javascript && nix develop --command just purge
 
 # Purge Rust setup artifacts
 rust-purge:
-    just rust/purge
+    cd rust && nix develop --command just purge
 
 # Purge test harness setup artifacts
 test-harness-purge:
-    just test-harness/purge
+    cd test-harness && nix develop --command just purge

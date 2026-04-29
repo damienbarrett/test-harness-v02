@@ -50,32 +50,134 @@ nix develop ./container --command bash
 Until they are, each flake floats on the tip of the `nixos-25.11`
 nixpkgs branch.
 
-## Status — what's done, what's next
+## Lifecycle phases
+
+The harness defines five phases with clean boundaries. Each later phase
+depends on the earlier phases having run, but is reversible without them.
+
+| Phase | Pulls from | Network | Reversed by |
+|---|---|---|---|
+| `provision` | Nix install, nixpkgs, flake toolchains, apt system libs, Playwright browsers | required (first run) | rebuild image |
+| `setup` | PyPI, npm, crates.io (project deps via lockfiles) | required (first run) | `purge` |
+| `build` | source code → wasm/transpiled artifacts | none | `clean` |
+| `test` | runs build artifacts + tests | none | `clean` |
+| `coverage` | runs tests + measures | none | `clean` |
+
+**`provision` is OS-level and image-baked.** The Containerfile runs the
+equivalent of `task provision` at image build time so
+`codex-harness:arm64-nix` ships fully provisioned. On a fresh
+`codex-universal:latest` image, `bootstrap-container-tools.sh` runs the
+same logic as a runtime fallback. Idempotent in both directions —
+running `task provision` on an already-provisioned image is a fast no-op.
+
+**`setup` is project-level and per-checkout.** Realises lockfile state:
+`uv sync`, `npm ci`, `cargo fetch`. Fast on second runs because deps
+are cached locally.
+
+**`clean` removes outputs.** `htmlcov/`, `output/`, `*.wasm`,
+`transpiled/`, `bindings/`, `target/release/` etc. Anything created by
+`build`, `test`, or `coverage`. Reversible by re-running them.
+
+**`purge` removes outputs + project deps.** `clean` plus `.venv/`,
+`node_modules/`, the rest of `target/`, project-local caches. Reversible
+by re-running `setup`. **Does not** remove image-baked state (`/nix/store`,
+apt packages, Playwright browsers) — that line lives at the image
+boundary; resetting it means rebuilding the image.
+
+## Why Playwright lives in `provision`, not `setup`
+
+Playwright's runtime needs are split between two upstream-prebuilt artifacts:
+
+| Piece | Source | Phase |
+|---|---|---|
+| System libs (libgtk-4, libgstreamer, …) | Ubuntu apt | `provision` |
+| Browser binaries (Chromium, WebKit, FFmpeg) | playwright.dev CDN | `provision` |
+| `playwright` npm package | npmjs registry | `setup` |
+
+System libs are OS-version-specific and `apt-get` requires sudo + a
+working apt repo — both of which work cleanly outside `nix develop` but
+get tangled inside it. Browser binaries are prebuilt and could go in
+either phase; placing them in `provision` keeps the image-bake/runtime
+fallback symmetry simple.
+
+The `playwright` *package* itself stays in `setup` (it's just an npm
+dep). What `setup` no longer does is `npx playwright install`.
+
+For non-Linux hosts running the JS sub-repo autonomously (e.g. a macOS
+laptop without the container), `setup` still installs browsers locally
+because there's no `provision` step that would do it.
+
+## Offline operation
+
+After `provision` and one successful `setup`, `build`/`test`/`coverage`
+work without network for Python and Rust. JavaScript needs one extra
+flag because `npm ci` and `npx` make opportunistic registry round-trips
+even when packages are locally installed. Set `npm_config_offline=true`
+to suppress them.
+
+## How orchestration enters Nix (Option A)
+
+The parent `Taskfile.yml` and `justfile`'s aggregate verbs (`setup`,
+`test`, `coverage`, `clean`, `purge`, `wasm:test`, `check:runners`)
+wrap each per-sub-repo invocation:
+
+```sh
+cd python && nix develop --command task setup
+```
+
+Language Taskfiles/justfiles are pure: no PATH preamble, no
+self-guarding, no Nix awareness. They assume the dev shell is active
+and read tools from PATH normally.
+
+Each language flake therefore declares `pkgs.go-task` and `pkgs.just`
+alongside the language toolchain — so a sub-repo run autonomously
+(`cd python && nix develop --command task setup`) has both the
+runtime *and* the orchestrator on PATH.
+
+The container image installs Nix at build time and pre-warms every
+flake (`nix develop --command true` against each), so `/nix/store` is
+populated before runtime. Ephemeral `--rm` runs hit the cache and
+`nix develop` is sub-second.
+
+## Autonomous invocation
+
+Per the principle that sub-repos run independently of parent
+orchestration, the contract for each language is:
+
+```sh
+# Inside the container (Nix is already on PATH):
+cd python
+nix develop --command task setup
+```
+
+That works without the parent Taskfile being involved. Outside the
+container, the requirement is having Nix installed; otherwise the same
+command works.
+
+## Status
 
 Done:
 
 - Per-sub-repo `flake.nix` + `flake.lock` exist and provide the toolchains
   above. Locks pin nixpkgs to `nixos-25.11 @ a4bf066`.
-- `container/flake.nix` provides task + just.
-- The rust language Taskfile/justfile no longer self-installs
-  `cargo-llvm-cov`, `cargo-component`, `rustup target add wasm32-wasip1`,
-  or `rustup component add llvm-tools-preview` — those are owned by the
-  Nix flake (preferred) or the imperative bootstrap (fallback).
-- `cargo-llvm-cov` is `0.6.20` everywhere (matches what nixpkgs 25.11
-  ships; was `0.6.21` in the imperative bootstrap before).
-
-Deferred (separate change):
-
-- Replace the imperative `cargo install` / `go install` / `rustup` blocks
-  in `container/Containerfile` and `container/bootstrap-container-tools.sh`
-  with a Nix install + `nix develop` entry. The bootstrap script is
-  still the fallback that makes direct (non-Nix) invocation work; once
-  orchestration enters `nix develop` for every entry point, the fallback
-  can go.
-- Remove the `~/.local/bin:~/.cargo/bin:~/go/bin` PATH preamble from every
-  Taskfile/justfile. The Nix shell sets PATH correctly, so the preamble
-  becomes redundant — but only once all entry points go through
-  `nix develop`.
+- Each language flake also provides `pkgs.go-task` and `pkgs.just` so
+  the sub-repo's lifecycle runs without the parent.
+- Container image installs Nix and pre-warms every flake at build time.
+- `bootstrap-container-tools.sh` is now a 30-line fallback that installs
+  Nix on a fresh codex-universal image (used when running the base image
+  directly without the harness's image build).
+- Parent Taskfile and justfile aggregates wrap per-language calls in
+  `nix develop`. `task wasm:test` and `task check:runners` go through
+  `nix develop ./test-harness`.
+- All language Taskfiles/justfiles have their PATH preambles removed.
+  The rust Taskfiles no longer self-install cargo-component or
+  cargo-llvm-cov; the flake provides them.
+- `cargo-llvm-cov` aligned to `0.6.20` (what nixpkgs 25.11 ships).
+- Lifecycle phases (`provision`, `setup`, `build`, `test`, `coverage`,
+  `clean`, `purge`) are separated by source of state; `task provision`
+  exposes the bootstrap script as a discoverable verb.
+- `npx playwright install` moved out of `javascript/library/setup` into
+  `provision`. Setup is now `npm ci` only on Linux.
 
 ## Playwright on Linux — known gotcha
 

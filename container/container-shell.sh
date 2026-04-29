@@ -25,10 +25,9 @@ cargo_target_dir="${CODEX_HARNESS_CARGO_TARGET_DIR:-/tmp/codex-harness-cargo-tar
 uv_cache_dir="${CODEX_HARNESS_UV_CACHE_DIR:-/tmp/codex-harness-uv-cache}"
 workspace_mode="${CODEX_HARNESS_WORKSPACE_MODE:-bind}"
 
+command="exec nix develop ./container"
 if [[ "$bootstrap" == "1" || "$bootstrap" == "true" || "$bootstrap" == "yes" ]]; then
-  command="./container/bootstrap-container-tools.sh && exec bash -l"
-else
-  command="exec bash -l"
+  command="./container/bootstrap-container-tools.sh && export PATH=/root/.nix-profile/bin:\$PATH && $command"
 fi
 
 declare -a run_args=(

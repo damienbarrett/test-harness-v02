@@ -11,23 +11,49 @@ ENV CODEX_ENV_PYTHON_VERSION=3.13 \
     CARGO_BUILD_JOBS=1 \
     CARGO_PROFILE_RELEASE_LTO=false \
     CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 \
-    PATH=/root/.local/bin:/root/.cargo/bin:/root/go/bin:/root/.local/share/mise/shims:${PATH}
+    USER=root \
+    HOME=/root \
+    PATH=/root/.nix-profile/bin:/root/.local/bin:/root/.cargo/bin:/root/go/bin:/root/.local/share/mise/shims:${PATH}
 
+# Single-user Nix install: pre-create nixbld so the installer's packaged
+# nix.conf is satisfied even though we are root in a non-systemd container.
 RUN /opt/codex/setup_universal.sh \
-    && rustup target add wasm32-wasip1 \
-    && rustup component add llvm-tools-preview \
-    && cargo install cargo-component --locked --version 0.21.1 \
-    && cargo install cargo-llvm-cov --locked --version 0.6.20 \
-    && cargo install just --locked --version 1.49.0 \
-    && go install github.com/go-task/task/v3/cmd/task@v3.50.0
+    && groupadd -r nixbld \
+    && for i in $(seq 1 10); do useradd -r -g nixbld -G nixbld -d /var/empty -s /sbin/nologin "nixbld$i" || true; done \
+    && curl -L https://nixos.org/nix/install -o /tmp/nix-install \
+    && sh /tmp/nix-install --no-daemon --yes \
+    && rm /tmp/nix-install \
+    && mkdir -p /root/.config/nix \
+    && echo 'experimental-features = nix-command flakes' > /root/.config/nix/nix.conf
 
+# Pre-warm every flake so the resulting image has every toolchain in
+# /nix/store. First `nix develop` at runtime is then sub-second instead
+# of a 5-15 minute fetch+build (which matters for ephemeral --rm runs).
+COPY container/flake.nix     container/flake.lock     /tmp/prewarm/container/
+COPY python/flake.nix        python/flake.lock        /tmp/prewarm/python/
+COPY javascript/flake.nix    javascript/flake.lock    /tmp/prewarm/javascript/
+COPY rust/flake.nix          rust/flake.lock          /tmp/prewarm/rust/
+COPY test-harness/flake.nix  test-harness/flake.lock  /tmp/prewarm/test-harness/
+
+RUN cd /tmp/prewarm/container     && nix develop --command true \
+    && cd /tmp/prewarm/python        && nix develop --command true \
+    && cd /tmp/prewarm/javascript    && nix develop --command true \
+    && cd /tmp/prewarm/rust          && nix develop --command true \
+    && cd /tmp/prewarm/test-harness  && nix develop --command true \
+    && rm -rf /tmp/prewarm
+
+# Playwright browser deps still come from apt: the JavaScript Playwright
+# install shells out to apt-get when --with-deps is set, and nixpkgs's
+# playwright-driver is a separate migration.
 COPY javascript/library/package.json /tmp/codex-harness-playwright/package.json
 COPY javascript/library/package-lock.json /tmp/codex-harness-playwright/package-lock.json
 
 RUN cd /tmp/codex-harness-playwright \
     && npm ci \
     && npx playwright install --with-deps chromium webkit \
-    && rm -rf /tmp/codex-harness-playwright
+    && rm -rf /tmp/codex-harness-playwright \
+    && mkdir -p /root/.cache/ms-playwright \
+    && touch /root/.cache/ms-playwright/.harness-provisioned
 
 WORKDIR /workspace/v02
 COPY . /workspace/v02

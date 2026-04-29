@@ -1,8 +1,6 @@
 version: "3"
 
 vars:
-  TOOL_PATH:
-    sh: printf '%s' "$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
   UV_CACHE_DIR:
     sh: printf '%s' "${UV_CACHE_DIR:-.cache/uv}"
   WIT_DIR: "../../common/wit"
@@ -10,7 +8,6 @@ vars:
   BINDINGS_DIR: "bindings"
 
 env:
-  PATH: "{{.TOOL_PATH}}"
   UV_CACHE_DIR: "{{.UV_CACHE_DIR}}"
 
 tasks:

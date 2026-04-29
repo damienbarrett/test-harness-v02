@@ -27,6 +27,8 @@
             })
             pkgs.cargo-component
             pkgs.cargo-llvm-cov
+            pkgs.go-task
+            pkgs.just
           ];
         };
       });

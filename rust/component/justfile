@@ -1,5 +1,3 @@
-export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
-
 # List available commands
 default:
     @just --list

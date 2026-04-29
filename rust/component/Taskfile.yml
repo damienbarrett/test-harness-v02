@@ -1,12 +1,5 @@
 version: "3"
 
-vars:
-  TOOL_PATH:
-    sh: printf '%s' "$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
-
-env:
-  PATH: "{{.TOOL_PATH}}"
-
 tasks:
   default:
     cmds:

@@ -15,6 +15,8 @@
             pkgs.nodejs_22
             pkgs.bun
             pkgs.deno
+            pkgs.go-task
+            pkgs.just
           ];
         };
       });

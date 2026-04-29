@@ -1,14 +1,9 @@
 version: "3"
 
 vars:
-  TOOL_PATH:
-    sh: printf '%s' "$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
   WIT_PATH: "../../common/wit/tasks.wit"
   WORLD_NAME: "task-component"
   OUTPUT_WASM: "task-component.wasm"
-
-env:
-  PATH: "{{.TOOL_PATH}}"
 
 tasks:
   default:

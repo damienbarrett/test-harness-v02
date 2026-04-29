@@ -1,12 +1,5 @@
 version: "3"
 
-vars:
-  TOOL_PATH:
-    sh: printf '%s' "$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
-
-env:
-  PATH: "{{.TOOL_PATH}}"
-
 tasks:
   default:
     cmds:
@@ -14,13 +7,14 @@ tasks:
     silent: true
 
   setup:
-    desc: Install dependencies and browser runtimes
+    desc: Install npm dependencies (Playwright is provisioned by `task provision`)
     cmds:
       - npm ci
       - |
-        if [ "$(uname -s)" = "Linux" ]; then
-          npx playwright install --with-deps chromium webkit
-        else
+        # Outside the harness container (e.g., a developer macOS host),
+        # Playwright is not OS-provisioned — install browsers here so
+        # autonomous `task setup` from the sub-repo still works.
+        if [ "$(uname -s)" != "Linux" ]; then
           npx playwright install chrome webkit
         fi
 

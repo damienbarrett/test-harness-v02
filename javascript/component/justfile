@@ -1,5 +1,3 @@
-export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
-
 wit_path := "../../common/wit/tasks.wit"
 world_name := "task-component"
 output_wasm := "task-component.wasm"

@@ -1,13 +1,11 @@
-export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
-
 # List available commands
 default:
     @just --list
 
-# Install dependencies
+# Install npm dependencies (Playwright is provisioned by `just provision`)
 setup:
     npm ci
-    if [ "$(uname -s)" = "Linux" ]; then npx playwright install --with-deps chromium webkit; else npx playwright install chrome webkit; fi
+    if [ "$(uname -s)" != "Linux" ]; then npx playwright install chrome webkit; fi
 
 # Run contract tests across Node, Bun, Deno, Chromium/Chrome, and WebKit
 test:

@@ -7,16 +7,14 @@ tasks:
     silent: true
 
   setup:
-    desc: Install npm dependencies (Playwright is provisioned by `task provision`)
+    desc: Install npm dependencies (Playwright comes from the Nix flake)
     cmds:
       - npm ci
-      - |
-        # Outside the harness container (e.g., a developer macOS host),
-        # Playwright is not OS-provisioned — install browsers here so
-        # autonomous `task setup` from the sub-repo still works.
-        if [ "$(uname -s)" != "Linux" ]; then
-          npx playwright install chrome webkit
-        fi
+      # Symlink the Nix-store-installed playwright into node_modules so
+      # ESM imports resolve. PLAYWRIGHT_NPM_PATH is set by the flake's
+      # shellHook; package.json intentionally doesn't declare playwright.
+      - mkdir -p node_modules
+      - ln -sfT "$PLAYWRIGHT_NPM_PATH" node_modules/playwright
 
   test:
     desc: Run contract tests across Node, Bun, Deno, Chromium/Chrome, and WebKit

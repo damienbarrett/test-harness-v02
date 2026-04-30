@@ -2,10 +2,11 @@
 default:
     @just --list
 
-# Install npm dependencies (Playwright is provisioned by `just provision`)
+# Install npm dependencies (Playwright comes from the Nix flake)
 setup:
     npm ci
-    if [ "$(uname -s)" != "Linux" ]; then npx playwright install chrome webkit; fi
+    mkdir -p node_modules
+    ln -sfT "$PLAYWRIGHT_NPM_PATH" node_modules/playwright
 
 # Run contract tests across Node, Bun, Deno, Chromium/Chrome, and WebKit
 test:

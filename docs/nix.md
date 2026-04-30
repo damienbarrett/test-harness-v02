@@ -84,36 +84,37 @@ by re-running `setup`. **Does not** remove image-baked state (`/nix/store`,
 apt packages, Playwright browsers) — that line lives at the image
 boundary; resetting it means rebuilding the image.
 
-## Why Playwright lives in `provision`, not `setup`
+## Playwright is owned end-to-end by Nix
 
-Playwright's runtime needs are split between two upstream-prebuilt artifacts:
+| Piece | Source |
+|---|---|
+| System libs (libgtk-4, libgstreamer, …) | `pkgs.playwright-driver` |
+| Browser binaries (Chromium, WebKit, FFmpeg) | `pkgs.playwright-driver.browsers` |
+| `playwright` npm module | `pkgs.playwright` (resolved via `NODE_PATH`) |
 
-| Piece | Source | Phase |
-|---|---|---|
-| System libs (libgtk-4, libgstreamer, …) | Ubuntu apt | `provision` |
-| Browser binaries (Chromium, WebKit, FFmpeg) | playwright.dev CDN | `provision` |
-| `playwright` npm package | npmjs registry | `setup` |
+`javascript/library/package.json` does **not** declare `playwright` as a
+dependency. There is one source of truth for the Playwright version:
+the nixpkgs flake input. Bumping that input bumps everything in lockstep
+— browsers, system libs, and the npm module — so the warm and cold
+paths are bit-for-bit identical for Playwright. No `apt-get`. No
+`npx playwright install`.
 
-System libs are OS-version-specific and `apt-get` requires sudo + a
-working apt repo — both of which work cleanly outside `nix develop` but
-get tangled inside it. Browser binaries are prebuilt and could go in
-either phase; placing them in `provision` keeps the image-bake/runtime
-fallback symmetry simple.
-
-The `playwright` *package* itself stays in `setup` (it's just an npm
-dep). What `setup` no longer does is `npx playwright install`.
+The trade: Playwright version follows nixpkgs's release cadence rather
+than `npm install playwright@latest`. Bumping nixpkgs requires
+re-running tests because Playwright's API surface may have changed.
+For a contract test harness that's the right trade.
 
 For non-Linux hosts running the JS sub-repo autonomously (e.g. a macOS
-laptop without the container), `setup` still installs browsers locally
-because there's no `provision` step that would do it.
+laptop), `nix develop ./javascript` provides the Linux-shaped browsers
+from nixpkgs — generally fine inside any Linux container, undefined on
+bare macOS. Sub-repo browser tests are container-only.
 
 ## Offline operation
 
-After `provision` and one successful `setup`, `build`/`test`/`coverage`
-work without network for Python and Rust. JavaScript needs one extra
-flag because `npm ci` and `npx` make opportunistic registry round-trips
-even when packages are locally installed. Set `npm_config_offline=true`
-to suppress them.
+After one successful `setup`, `build`/`test`/`coverage` work without
+network for all three languages. The JS flake sets
+`npm_config_prefer_offline=true` so npm/npx skip registry round-trips
+when the cache has the answer (still fetches when missing).
 
 ## How orchestration enters Nix (Option A)
 

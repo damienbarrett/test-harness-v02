@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(container --help)",
+      "Bash(container image list*)",
+      "Bash(/usr/local/bin/container image list*)",
+      "Bash(container system df*)",
+      "Bash(/usr/local/bin/container system df*)",
+      "Bash(task check:runners)",
+      "Bash(task container:healthcheck)"
+    ]
+  }
+}

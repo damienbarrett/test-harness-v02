@@ -42,18 +42,5 @@ RUN cd /tmp/prewarm/container     && nix develop --command true \
     && cd /tmp/prewarm/test-harness  && nix develop --command true \
     && rm -rf /tmp/prewarm
 
-# Playwright browser deps still come from apt: the JavaScript Playwright
-# install shells out to apt-get when --with-deps is set, and nixpkgs's
-# playwright-driver is a separate migration.
-COPY javascript/library/package.json /tmp/codex-harness-playwright/package.json
-COPY javascript/library/package-lock.json /tmp/codex-harness-playwright/package-lock.json
-
-RUN cd /tmp/codex-harness-playwright \
-    && npm ci \
-    && npx playwright install --with-deps chromium webkit \
-    && rm -rf /tmp/codex-harness-playwright \
-    && mkdir -p /root/.cache/ms-playwright \
-    && touch /root/.cache/ms-playwright/.harness-provisioned
-
 WORKDIR /workspace/v02
 COPY . /workspace/v02

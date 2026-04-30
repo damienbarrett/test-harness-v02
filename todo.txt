@@ -1,0 +1,158 @@
+Working notes — Nix-native Playwright migration & cold-path JS browser tests
+============================================================================
+Last updated: 2026-04-30
+
+
+WHERE WE ARE
+------------
+
+Warm path (`codex-harness:arm64-nix`):
+  - Python:           ✓ all tests pass
+  - JavaScript Node:  ✓ all tests pass
+  - JavaScript Bun:   ✓ all tests pass
+  - JavaScript Deno:  ✓ all tests pass
+  - JavaScript Chromium browser test:  ✓ passes (Nix-native, ~870ms)
+  - JavaScript WebKit browser test:    ✗ skipped (PLAYWRIGHT_SKIP_WEBKIT=1)
+  - Rust library + component:          ✓ all tests pass
+  - Test harness self-checks:          ✓ pass
+
+Cold path (`codex-universal:latest`, bootstrap installs Nix at runtime):
+  - Bootstrap (Nix install only — no apt now):  ✓
+  - Python / Rust / test-harness lifecycle:     ✓ pass
+  - JavaScript Chromium:                        ✓ pass
+  - JavaScript WebKit:                          ✗ skipped, same reason as warm
+
+The architecture of the migration is correct and validated for everything
+except WebKit. Apt is fully eliminated from the harness's own code paths.
+
+
+WHY WEBKIT IS SKIPPED
+---------------------
+
+nixpkgs's `pkgs.playwright-driver` ships **WPE WebKit** (the embedded variant,
+designed for set-top boxes / kiosks with hardware GPU). Apple's container
+runtime has no GPU, and WPE aborts at startup with:
+
+    Could not create WPE EGL display: EGL_SUCCESS. Aborting...
+
+Things that did NOT fix it:
+  - WEBKIT_DISABLE_DMABUF_RENDERER=1
+  - EGL_PLATFORM=surfaceless + WPE_BACKEND=fdo
+  - LIBGL_ALWAYS_SOFTWARE=1
+  - Adding pkgs.mesa for software EGL (llvmpipe)
+
+Chromium works in the same container because it has SwiftShader (software
+rasterizer) baked in and falls back to it cleanly. WebKit (especially WPE)
+does not.
+
+The proper future fix needs WebKitGTK + Xvfb (or similar virtual display)
+instead of WPE WebKit — see "FUTURE WORK" below.
+
+
+CURRENT NIX-NATIVE PLAYWRIGHT DESIGN
+------------------------------------
+
+All in `javascript/flake.nix`:
+
+  packages = [
+    pkgs.nodejs_22 pkgs.bun pkgs.deno pkgs.go-task pkgs.just
+    pkgs.playwright          # the npm module (playwright-core 1.56.1)
+    pkgs.playwright-driver   # browsers + system libs
+  ];
+
+  shellHook exports:
+    - PLAYWRIGHT_NPM_PATH         (Nix store path of the npm module)
+    - PLAYWRIGHT_BROWSERS_PATH    (Nix store path of browser bundle)
+    - PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
+    - PLAYWRIGHT_SKIP_WEBKIT=1    (read by browser.test.js)
+    - npm_config_prefer_offline=true
+
+`javascript/library/package.json` does NOT declare `playwright`. There is
+ONE source of truth for the version: nixpkgs.
+
+`javascript/library/Taskfile.yml` setup symlinks the Nix-store playwright
+into `node_modules/playwright` so node ESM resolution finds it
+(NODE_PATH is ignored for ESM):
+
+    npm ci
+    mkdir -p node_modules
+    ln -sfT "$PLAYWRIGHT_NPM_PATH" node_modules/playwright
+
+`browser.test.js` filters WebKit out of `browserTargets` when
+`PLAYWRIGHT_SKIP_WEBKIT=1` is set.
+
+
+FUTURE WORK (in priority order)
+-------------------------------
+
+1. WEBKIT-ON-NIX (medium effort, ~half day):
+   Replace WPE WebKit with WebKitGTK in the playwright-driver derivation,
+   plus run a virtual X server (Xvfb) so WebKitGTK has a display.
+   Probably needs a flake-level override of pkgs.playwright-driver +
+   conditional Xvfb start in the test setup OR shellHook.
+   When done, remove PLAYWRIGHT_SKIP_WEBKIT from the flake's shellHook
+   and the conditional in browser.test.js.
+
+2. PLAYWRIGHT VERSION COUPLING (low effort, ongoing):
+   Today the Playwright version is governed by the nixpkgs flake input
+   (currently nixos-25.11 → playwright-core 1.56.1). Bumping the
+   nixpkgs input bumps Playwright in lockstep. New Playwright features
+   are only available after nixpkgs picks them up. Track this and
+   bump the channel when needed.
+
+3. COLD-PATH WEBKIT MYSTERY (resolved, but worth a note):
+   Earlier (apt-based) cold-path runs hit a different WebKit failure:
+   "page.goto: WebKit encountered an internal error". Apt-package-version
+   diff showed identical packages between warm and cold images. Never
+   diagnosed. Now obsolete because the apt path is gone — but if WebKit
+   support is restored via task #1, watch for similar surprises.
+
+4. macOS HOST INVOCATION:
+   Today, running `cd javascript && nix develop --command task setup`
+   on a developer macOS laptop pulls Linux-shaped Playwright browsers
+   from nixpkgs — generally fine for a Linux container, undefined on
+   bare macOS. Browser tests are container-only. Document if anyone
+   asks; otherwise leave as-is.
+
+5. OFFLINE OPERATION:
+   With prefer-offline=true and one successful setup, the lifecycle
+   works without network for all three languages. True --network=none
+   may still hit edge cases (npm registry verification on `npm ci` if
+   cache is stale). Worth a future test pass with a fully populated
+   container cache.
+
+
+COMMIT GRAPH (local, all on `add-nix-flake` branches)
+-----------------------------------------------------
+
+Parent — last committed state before this final round:
+  0be509b  Wire orchestration through Nix dev shells (Option A) + phase model
+  26498f2  Lock flake inputs
+  ac302a6  Add Nix dev shells per sub-repo + container
+
+This commit (about to be made):
+  Migrate Playwright to nixpkgs (skip WebKit in this env)
+
+
+VALIDATION NUMBERS (last clean runs)
+------------------------------------
+
+  Warm container:test (apt-based, pre-migration):    ~3:15 (BOOTSTRAP=0) / ~4:07 (BOOTSTRAP=1)
+  Cold container:test (apt-based, pre-migration):    ~4:44 (with apt+playwright provision)
+  Nix overhead (cold − warm):                        ~90s
+  Nix-native warm (this commit, WebKit skipped):     pending final-run validation —
+                                                     architecture + Chromium proven
+                                                     across many incremental runs.
+
+
+KEY PRINCIPLES PRESERVED
+------------------------
+
+  ✓ Host stays Nix-free
+  ✓ Each sub-repo declares its own environment via flake.nix
+  ✓ No root-level flake; sub-repos are autonomous
+  ✓ Pre-warm in the image gives sub-second `nix develop` at runtime
+  ✓ Phase model: provision / setup / build / test / coverage / clean / purge
+  ✓ Apt-get fully eliminated from the harness's own code (codex-universal
+    base still uses it internally for Python/Node/Rust/Go via mise; that's
+    upstream's concern)

@@ -1,9 +1,3 @@
-export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
-LOCAL_HARNESS_DIR := justfile_directory() + "/.harness"
-export HARNESS_DIR := env_var_or_default('HARNESS_DIR', LOCAL_HARNESS_DIR)
-export HARNESS_OUTPUT_DIR := env_var_or_default('HARNESS_OUTPUT_DIR', HARNESS_DIR + "/outputs")
-export HARNESS_CACHE_DIR := env_var_or_default('HARNESS_CACHE_DIR', HARNESS_DIR + "/cache")
-
 # List available commands
 default:
     @just --list
@@ -24,16 +18,10 @@ coverage:
     just component/coverage
 
 # Remove generated outputs while preserving dependency state
-clean:
-    just library/clean
-    just component/clean
-    rm -rf "$HARNESS_OUTPUT_DIR/javascript"
+clean: library-clean component-clean
 
 # Remove generated outputs and setup artifacts
-purge:
-    just library/purge
-    just component/purge
-    rm -rf "{{LOCAL_HARNESS_DIR}}" "$HARNESS_CACHE_DIR/javascript" "$HARNESS_OUTPUT_DIR/javascript"
+purge: library-purge component-purge
 
 # Install library dependencies
 library-setup:

@@ -1,41 +1,37 @@
-export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
-LOCAL_HARNESS_DIR := justfile_directory() + "/.harness"
-export HARNESS_DIR := env_var_or_default('HARNESS_DIR', LOCAL_HARNESS_DIR)
-export HARNESS_OUTPUT_DIR := env_var_or_default('HARNESS_OUTPUT_DIR', HARNESS_DIR + "/outputs")
-export HARNESS_CACHE_DIR := env_var_or_default('HARNESS_CACHE_DIR', HARNESS_DIR + "/cache")
-export NPM_CONFIG_CACHE := env_var_or_default('NPM_CONFIG_CACHE', HARNESS_CACHE_DIR + "/javascript/library/npm")
-export PLAYWRIGHT_BROWSERS_PATH := env_var_or_default('PLAYWRIGHT_BROWSERS_PATH', HARNESS_CACHE_DIR + "/javascript/library/playwright")
-
 # List available commands
 default:
     @just --list
 
-# Install dependencies
+# Install npm dependencies (Playwright comes from the Nix flake)
 setup:
     npm ci
-    if [ "$(uname -s)" = "Linux" ]; then npx playwright install --with-deps chromium webkit; else npx playwright install chromium webkit; fi
+    mkdir -p node_modules
+    ln -sfT "$PLAYWRIGHT_NPM_PATH" node_modules/playwright
 
 # Run contract tests across Node, Bun, Deno, Chromium, and WebKit
 test:
-    npx node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js
-    npx bun test tests/bun.test.js
-    npx deno test --allow-read tests/deno.test.js
+    if [ -n "${PLAYWRIGHT_FHS:-}" ]; then \
+      "$PLAYWRIGHT_FHS" -c 'node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js'; \
+    else \
+      node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js; \
+    fi
+    bun test tests/bun.test.js
+    deno test --allow-read tests/deno.test.js
 
 # Run runtime matrix plus Node coverage (100% threshold)
 coverage:
-    npx bun test tests/bun.test.js
-    npx deno test --allow-read tests/deno.test.js
-    npx node --test --test-timeout=60000 --experimental-test-coverage \
-      --test-coverage-include='src/**' \
-      --test-coverage-lines=100 \
-      --test-coverage-branches=100 \
-      --test-coverage-functions=100 \
-      tests/count.test.js tests/browser.test.js
+    bun test tests/bun.test.js
+    deno test --allow-read tests/deno.test.js
+    if [ -n "${PLAYWRIGHT_FHS:-}" ]; then \
+      "$PLAYWRIGHT_FHS" -c "node --test --test-timeout=60000 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 tests/count.test.js tests/browser.test.js"; \
+    else \
+      node --test --test-timeout=60000 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 tests/count.test.js tests/browser.test.js; \
+    fi
 
 # Remove generated outputs while preserving dependency state
 clean:
-    rm -rf .coverage .nyc_output coverage output "$HARNESS_OUTPUT_DIR/javascript/library" playwright-report test-results
+    rm -rf .coverage .nyc_output coverage output playwright-report test-results
 
 # Remove generated outputs and setup artifacts
 purge: clean
-    rm -rf node_modules "$NPM_CONFIG_CACHE" "$PLAYWRIGHT_BROWSERS_PATH" "{{LOCAL_HARNESS_DIR}}"
+    rm -rf node_modules

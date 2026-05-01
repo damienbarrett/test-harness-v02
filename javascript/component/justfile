@@ -1,10 +1,3 @@
-export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
-LOCAL_HARNESS_DIR := justfile_directory() + "/.harness"
-export HARNESS_DIR := env_var_or_default('HARNESS_DIR', LOCAL_HARNESS_DIR)
-export HARNESS_OUTPUT_DIR := env_var_or_default('HARNESS_OUTPUT_DIR', HARNESS_DIR + "/outputs")
-export HARNESS_CACHE_DIR := env_var_or_default('HARNESS_CACHE_DIR', HARNESS_DIR + "/cache")
-export NPM_CONFIG_CACHE := env_var_or_default('NPM_CONFIG_CACHE', HARNESS_CACHE_DIR + "/javascript/component/npm")
-
 wit_path := "../../common/wit/tasks.wit"
 world_name := "task-component"
 output_wasm := "task-component.wasm"
@@ -19,8 +12,8 @@ setup:
 
 # Build the WASM component and transpile for testing
 build:
-    npx jco componentize src/app.js --wit {{wit_path}} -n {{world_name}} -d all --enable clocks --enable random --enable stdio -o {{output_wasm}}
-    npx jco transpile {{output_wasm}} -o transpiled/
+    if [ -n "${JCO_FHS:-}" ]; then "$JCO_FHS" -c 'npx jco componentize src/app.js --wit {{wit_path}} -n {{world_name}} -d all --enable clocks --enable random --enable stdio -o {{output_wasm}}'; else npx jco componentize src/app.js --wit {{wit_path}} -n {{world_name}} -d all --enable clocks --enable random --enable stdio -o {{output_wasm}}; fi
+    if [ -n "${JCO_FHS:-}" ]; then "$JCO_FHS" -c 'npx jco transpile {{output_wasm}} -o transpiled/'; else npx jco transpile {{output_wasm}} -o transpiled/; fi
 
 # Run tests (builds first)
 test: build
@@ -37,8 +30,8 @@ coverage: build
 
 # Remove generated outputs while preserving dependency state
 clean:
-    rm -rf .coverage .nyc_output coverage output "$HARNESS_OUTPUT_DIR/javascript/component" test-results transpiled task-component.wasm
+    rm -rf .coverage .nyc_output coverage output test-results transpiled task-component.wasm
 
 # Remove generated outputs and setup artifacts
 purge: clean
-    rm -rf node_modules "$NPM_CONFIG_CACHE" "{{LOCAL_HARNESS_DIR}}"
+    rm -rf node_modules

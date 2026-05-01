@@ -54,17 +54,21 @@ function createFixtureServer() {
   });
 }
 
+// Non-Linux shells can opt out of WebKit when the browser bundle is not
+// runnable on the host. Linux Nix runs these tests through PLAYWRIGHT_FHS.
+const skipWebKit = process.env.PLAYWRIGHT_SKIP_WEBKIT === "1";
+
 const browserTargets = [
   {
     label: "Chromium",
     browserType: chromium,
     launchOptions: {},
   },
-  {
+  ...(skipWebKit ? [] : [{
     label: "WebKit",
     browserType: webkit,
     launchOptions: {},
-  },
+  }]),
 ];
 
 let server;

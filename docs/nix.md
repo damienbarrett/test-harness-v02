@@ -14,7 +14,7 @@ deliberate, per-sub-repo change.
 | File | Provides |
 |---|---|
 | `python/flake.nix`        | python 3.13 + uv |
-| `javascript/flake.nix`    | node 22 + bun + deno |
+| `javascript/flake.nix`    | node 22 + bun + deno + Playwright browser FHS wrapper |
 | `rust/flake.nix`          | rust 1.92.0 with `wasm32-wasip1` and `llvm-tools-preview`, plus `cargo-component` and `cargo-llvm-cov` |
 | `test-harness/flake.nix`  | python 3.13 + uv (runs the harness scripts) |
 | `container/flake.nix`     | task + just |
@@ -57,7 +57,7 @@ depends on the earlier phases having run, but is reversible without them.
 
 | Phase | Pulls from | Network | Reversed by |
 |---|---|---|---|
-| `provision` | Nix install, nixpkgs, flake toolchains, apt system libs, Playwright browsers | required (first run) | rebuild image |
+| `provision` | Nix install, nixpkgs, flake toolchains, Playwright browser closure | required (first run) | rebuild image |
 | `setup` | PyPI, npm, crates.io (project deps via lockfiles) | required (first run) | `purge` |
 | `build` | source code → wasm/transpiled artifacts | none | `clean` |
 | `test` | runs build artifacts + tests | none | `clean` |
@@ -81,7 +81,7 @@ are cached locally.
 **`purge` removes outputs + project deps.** `clean` plus `.venv/`,
 `node_modules/`, the rest of `target/`, project-local caches. Reversible
 by re-running `setup`. **Does not** remove image-baked state (`/nix/store`,
-apt packages, Playwright browsers) — that line lives at the image
+Playwright browsers) — that line lives at the image
 boundary; resetting it means rebuilding the image.
 
 ## Playwright is owned end-to-end by Nix
@@ -90,7 +90,8 @@ boundary; resetting it means rebuilding the image.
 |---|---|
 | System libs (libgtk-4, libgstreamer, …) | `pkgs.playwright-driver` |
 | Browser binaries (Chromium, WebKit, FFmpeg) | `pkgs.playwright-driver.browsers` |
-| `playwright` npm module | `pkgs.playwright` (resolved via `NODE_PATH`) |
+| `playwright` npm module | `pkgs.playwright` (symlinked into `node_modules`) |
+| Linux browser runtime shape | `javascript-playwright-fhs` from `javascript/flake.nix` |
 
 `javascript/library/package.json` does **not** declare `playwright` as a
 dependency. There is one source of truth for the Playwright version:
@@ -98,6 +99,11 @@ the nixpkgs flake input. Bumping that input bumps everything in lockstep
 — browsers, system libs, and the npm module — so the warm and cold
 paths are bit-for-bit identical for Playwright. No `apt-get`. No
 `npx playwright install`.
+
+On Linux, WebKit is launched from inside the `PLAYWRIGHT_FHS` wrapper
+exported by the JavaScript flake. The wrapper provides the FHS-style
+library layout expected by WebKit's runtime `dlopen` calls while keeping
+the browser binaries and npm module in nixpkgs.
 
 The trade: Playwright version follows nixpkgs's release cadence rather
 than `npm install playwright@latest`. Bumping nixpkgs requires
@@ -177,14 +183,16 @@ Done:
 - Lifecycle phases (`provision`, `setup`, `build`, `test`, `coverage`,
   `clean`, `purge`) are separated by source of state; `task provision`
   exposes the bootstrap script as a discoverable verb.
-- `npx playwright install` moved out of `javascript/library/setup` into
-  `provision`. Setup is now `npm ci` only on Linux.
+- JavaScript browser tests run WebKit through the Nix-provided FHS wrapper,
+  so the Linux browser matrix no longer needs apt or `PLAYWRIGHT_SKIP_WEBKIT`.
+- `npx playwright install` is not part of setup or provision. Setup is
+  `npm ci` plus the Nix-store Playwright symlink.
 
-## Playwright on Linux — known gotcha
+## Playwright on Linux
 
-`javascript/library/setup` calls `npx playwright install --with-deps` on
-Linux, which expects `apt-get`. Inside a Nix-only environment this will
-fail. If/when the base image becomes Nix-native, switch to
-`pkgs.playwright-driver` and set `PLAYWRIGHT_BROWSERS_PATH` from the
-flake. Today the apt-based base image keeps this working, so no change
-is required yet.
+Plain `nix develop ./javascript` exposes `pkgs.playwright` and
+`pkgs.playwright-driver.browsers`, but WPE WebKit needs an FHS-shaped
+runtime for graphics and media libraries loaded outside the direct ELF
+closure. The flake exports `PLAYWRIGHT_FHS`; JavaScript library test
+commands use it for Node browser tests. Chromium and WebKit both run from
+the nixpkgs browser bundle.

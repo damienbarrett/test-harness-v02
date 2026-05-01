@@ -1,21 +1,10 @@
-export PATH := env_var('HOME') + "/.local/bin:" + env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/go/bin:" + env_var('PATH')
-LOCAL_HARNESS_DIR := justfile_directory() + "/.harness"
-export HARNESS_DIR := env_var_or_default('HARNESS_DIR', LOCAL_HARNESS_DIR)
-export HARNESS_OUTPUT_DIR := env_var_or_default('HARNESS_OUTPUT_DIR', HARNESS_DIR + "/outputs")
-export HARNESS_CACHE_DIR := env_var_or_default('HARNESS_CACHE_DIR', HARNESS_DIR + "/cache")
-export CARGO_TARGET_DIR := env_var_or_default('CARGO_TARGET_DIR', HARNESS_OUTPUT_DIR + "/rust/cargo-target")
-
 # List available commands
 default:
     @just --list
 
 # Install dependencies
 setup:
-    rustup target add wasm32-wasip1
-    if ! cargo component --version >/dev/null 2>&1; then cargo install cargo-component --locked --version 0.21.1; fi
     cargo fetch --locked
-    rustup component add llvm-tools-preview
-    if ! cargo llvm-cov --version >/dev/null 2>&1; then cargo install cargo-llvm-cov --locked --version 0.6.21; fi
 
 # Build the WASM component
 build:
@@ -37,9 +26,7 @@ coverage:
 # Remove generated outputs while preserving dependency state
 clean:
     cargo clean
-    rm -rf "$HARNESS_OUTPUT_DIR/rust/component"
     rm -f task-component.wasm
 
 # Remove generated outputs and setup artifacts
 purge: clean
-    rm -rf "$CARGO_TARGET_DIR" "{{LOCAL_HARNESS_DIR}}"

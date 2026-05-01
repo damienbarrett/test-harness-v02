@@ -1,24 +1,5 @@
 version: "3"
 
-vars:
-  TOOL_PATH:
-    sh: printf '%s' "$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
-  HARNESS_DIR:
-    sh: printf '%s' "${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}"
-  HARNESS_OUTPUT_DIR:
-    sh: printf '%s' "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}"
-  HARNESS_CACHE_DIR:
-    sh: printf '%s' "${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}"
-  CARGO_TARGET_DIR:
-    sh: printf '%s' "${CARGO_TARGET_DIR:-${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}/rust/cargo-target}"
-
-env:
-  PATH: "{{.TOOL_PATH}}"
-  HARNESS_DIR: "{{.HARNESS_DIR}}"
-  HARNESS_OUTPUT_DIR: "{{.HARNESS_OUTPUT_DIR}}"
-  HARNESS_CACHE_DIR: "{{.HARNESS_CACHE_DIR}}"
-  CARGO_TARGET_DIR: "{{.CARGO_TARGET_DIR}}"
-
 tasks:
   default:
     cmds:
@@ -29,11 +10,6 @@ tasks:
     desc: Install dependencies
     cmds:
       - cargo fetch --locked
-      - rustup component add llvm-tools-preview
-      - |
-        if ! cargo llvm-cov --version >/dev/null 2>&1; then
-          cargo install cargo-llvm-cov --locked --version 0.6.21
-        fi
 
   test:
     desc: Run tests
@@ -50,10 +26,8 @@ tasks:
     desc: Remove generated outputs while preserving dependency state
     cmds:
       - cargo clean
-      - rm -rf "$HARNESS_OUTPUT_DIR/rust/library"
 
   purge:
     desc: Remove generated outputs and setup artifacts
     cmds:
       - task: clean
-      - rm -rf "$CARGO_TARGET_DIR" "{{.TASKFILE_DIR}}/.harness"

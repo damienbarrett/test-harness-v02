@@ -19,22 +19,26 @@ tasks:
   test:
     desc: Run contract tests across Node, Bun, Deno, Chromium/Chrome, and WebKit
     cmds:
-      - npx node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js
-      - npx bun test tests/bun.test.js
-      - npx deno test --allow-read tests/deno.test.js
+      - |
+        if [ -n "${PLAYWRIGHT_FHS:-}" ]; then
+          "$PLAYWRIGHT_FHS" -c 'node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js'
+        else
+          node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js
+        fi
+      - bun test tests/bun.test.js
+      - deno test --allow-read tests/deno.test.js
 
   coverage:
     desc: Run runtime matrix plus Node coverage (100% threshold)
     cmds:
-      - npx bun test tests/bun.test.js
-      - npx deno test --allow-read tests/deno.test.js
-      - >-
-        npx node --test --test-timeout=60000 --experimental-test-coverage
-        --test-coverage-include='src/**'
-        --test-coverage-lines=100
-        --test-coverage-branches=100
-        --test-coverage-functions=100
-        tests/count.test.js tests/browser.test.js
+      - bun test tests/bun.test.js
+      - deno test --allow-read tests/deno.test.js
+      - |
+        if [ -n "${PLAYWRIGHT_FHS:-}" ]; then
+          "$PLAYWRIGHT_FHS" -c "node --test --test-timeout=60000 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 tests/count.test.js tests/browser.test.js"
+        else
+          node --test --test-timeout=60000 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 tests/count.test.js tests/browser.test.js
+        fi
 
   clean:
     desc: Remove generated outputs while preserving dependency state

@@ -54,10 +54,8 @@ function createFixtureServer() {
   });
 }
 
-// PLAYWRIGHT_SKIP_WEBKIT is set by the Nix flake's shellHook because
-// nixpkgs's playwright-driver ships WPE WebKit, which needs hardware
-// EGL — unavailable in Apple's container runtime. Until WebKitGTK +
-// Xvfb is wired up, Chromium alone covers the browser contract.
+// Non-Linux shells can opt out of WebKit when the browser bundle is not
+// runnable on the host. Linux Nix runs these tests through PLAYWRIGHT_FHS.
 const skipWebKit = process.env.PLAYWRIGHT_SKIP_WEBKIT === "1";
 
 const browserTargets = [

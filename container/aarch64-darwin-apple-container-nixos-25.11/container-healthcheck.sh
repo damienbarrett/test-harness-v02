@@ -14,7 +14,7 @@ if [[ -z "$container_bin" ]]; then
 fi
 
 arch="${CODEX_HARNESS_ARCH:-arm64}"
-image="${CODEX_HARNESS_IMAGE:-ghcr.io/openai/codex-universal:latest}"
+image="${CODEX_HARNESS_IMAGE:-nixpkgs/nix-flakes:nixos-25.11-aarch64-linux}"
 image_name="$image"
 image_tag=""
 if [[ "$image" == *:* ]]; then
@@ -34,8 +34,8 @@ fi
 
 if [[ "$image_found" != "yes" ]]; then
   echo "Image not found locally: $image" >&2
-  echo "Run ./container/container-pull.sh first, or set CODEX_HARNESS_IMAGE to an existing image." >&2
+  echo "Run ./container/aarch64-darwin-apple-container-nixos-25.11/container-pull.sh first, or set CODEX_HARNESS_IMAGE to an existing image." >&2
   exit 1
 fi
 
-"$container_bin" run --rm --arch "$arch" "$image" -lc 'printf "container arch: %s\n" "$(uname -m)"'
+"$container_bin" run --rm --arch "$arch" "$image" /bin/sh -c 'printf "container arch: %s\n" "$(uname -m)"'

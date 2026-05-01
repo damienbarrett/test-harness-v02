@@ -1,156 +1,183 @@
-Working notes — Nix-native Playwright migration & cold-path JS browser tests
-============================================================================
+# NixOS 25.11 Apple Container Base
+
 Last updated: 2026-05-01
 
+## Status
 
-WHERE WE ARE
-------------
+- [x] Branch created: `feature/nixos-25.11-container-base`
+- [x] Existing Codex Universal solution moved into its own folder
+- [x] New NixOS 25.11 Apple `container` solution created
+- [x] Root `task` and `just` commands updated
+- [x] Codex Universal moved-folder smoke check passed
+- [x] NixOS 25.11 base image smoke check passed
+- [x] NixOS 25.11 harness image build passed
+- [x] NixOS 25.11 healthcheck passed
+- [x] JavaScript componentization runs through a Nix-owned FHS wrapper
+- [x] NixOS 25.11 `both test` passed
+- [x] NixOS 25.11 `both coverage` passed
+- [x] Documentation updated after validation
 
-Warm path (`codex-harness:arm64-nix`):
-  - Python:           ✓ all tests pass
-  - JavaScript Node:  ✓ all tests pass
-  - JavaScript Bun:   ✓ all tests pass
-  - JavaScript Deno:  ✓ all tests pass
-  - JavaScript Chromium browser test:  ✓ passes (Nix-native, ~870ms)
-  - JavaScript WebKit browser test:    ✓ passes via PLAYWRIGHT_FHS
-  - Rust library + component:          ✓ all tests pass
-  - Test harness self-checks:          ✓ pass
+## Validation Notes
 
-Cold path (`ghcr.io/openai/codex-universal:latest`, bootstrap installs Nix at runtime):
-  - Bootstrap (Nix install only — no apt now):  ✓
-  - Python / Rust / test-harness lifecycle:     ✓ pass
-  - JavaScript Chromium:                        ✓ pass
-  - JavaScript WebKit:                          ✓ passes via PLAYWRIGHT_FHS
+- Initial no-bind NixOS 25.11 `both test` failed in JavaScript
+  componentization before the FHS wrapper fix:
 
-The architecture of the migration is correct. Apt is fully eliminated from
-the harness's own code paths. WebKit works when launched inside a Nix-built
-FHS runtime wrapper.
+  ```text
+  npx jco componentize ... -o task-component.wasm
+  (jco componentize) Error: Failed to initialize component:
+  undefined
+  ```
 
+  Python tests passed, JavaScript Node/Bun/Deno tests passed, and Playwright
+  Chromium/WebKit passed before this failure.
 
-WHAT WAS WRONG ABOUT THE WEBKIT SUMMARY
----------------------------------------
+- Root cause found: npm's `@bytecodealliance/wizer-linux-arm64/wizer`
+  binary expects the conventional glibc loader path:
 
-nixpkgs's `pkgs.playwright-driver` ships **WPE WebKit** (the embedded variant,
-designed for set-top boxes / kiosks). Launched directly from the normal
-`mkShell`, WPE aborts at startup with:
+  ```text
+  /lib/ld-linux-aarch64.so.1
+  ```
 
-    Could not create WPE EGL display: EGL_SUCCESS. Aborting...
+  The file exists, but NixOS-style images do not provide that FHS loader
+  path by default, so Node reports `spawnSync ... ENOENT`.
 
-That part was true, but the conclusion was too strong. It is not simply a
-container/hardware limitation: the same Nix-packaged WebKit passes in the same
-container when launched from a Nix `buildFHSEnv` wrapper with the missing
-graphics/media library layout available.
+- Decision: do not bake loader symlinks into the NixOS Containerfile. Fix this
+  in the JavaScript Nix environment with an FHS wrapper for componentization,
+  matching the Playwright FHS approach.
 
-Things that did NOT fix direct `mkShell` execution:
-  - WEBKIT_DISABLE_DMABUF_RENDERER=1
-  - EGL_PLATFORM=surfaceless + WPE_BACKEND=fdo
-  - LIBGL_ALWAYS_SOFTWARE=1
-  - Adding pkgs.mesa for software EGL (llvmpipe)
+- Bind-mounted NixOS smoke passed after the FHS wrapper change:
 
-Things that DID fix it:
-  - Launch the Node browser tests through a Nix-built FHS runtime wrapper.
-  - Include the WebKit graphics/media dependency closure in that FHS runtime.
+  ```text
+  cd javascript && nix develop --command bash -c 'cd component && npm ci && task build'
+  ```
 
-WebKitGTK + Xvfb is therefore not proven necessary for this harness.
+  `JCO_FHS`, `PLAYWRIGHT_FHS`, and `JAVASCRIPT_FHS` all point at the
+  Nix-built `javascript-fhs` wrapper, and `jco componentize` succeeds there.
+  The NixOS harness image was rebuilt successfully after this change; no-bind
+  `both test` passed in the rebuilt image.
 
+- No-bind NixOS `both test` passed with `CODEX_HARNESS_WORKSPACE_MODE=image`.
+  This includes Python, JavaScript, Rust, the test harness parity checks,
+  Playwright Chromium/WebKit, Bun, Deno, and JavaScript WASM componentization.
 
-CURRENT NIX-NATIVE PLAYWRIGHT DESIGN
-------------------------------------
+- No-bind NixOS `both coverage` passed with `CODEX_HARNESS_WORKSPACE_MODE=image`.
+  Python, JavaScript, and Rust all reached their configured 100% coverage
+  thresholds through both `task` and `just`.
 
-All in `javascript/flake.nix`:
+- Documentation updated in `container/README.md`, the two per-solution
+  container READMEs, and `docs/nix.md`.
 
-  packages = [
-    pkgs.nodejs_22 pkgs.bun pkgs.deno pkgs.go-task pkgs.just
-    pkgs.playwright          # the npm module (playwright-core 1.56.1)
-    pkgs.playwright-driver   # browsers + system libs
-  ];
+## Goal
 
-  shellHook exports:
-    - PLAYWRIGHT_NPM_PATH         (Nix store path of the npm module)
-    - PLAYWRIGHT_BROWSERS_PATH    (Nix store path of browser bundle)
-    - PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
-    - PLAYWRIGHT_FHS              (Linux-only FHS runtime wrapper)
-    - npm_config_prefer_offline=true
+Add a second, explicit Apple `container` solution whose base image is
+Nix/NixOS 25.11, while preserving the current Codex Universal based solution.
+Keep this straightforward by using separate folders and separate files, not
+option switches.
 
-`javascript/library/package.json` does NOT declare `playwright`. There is
-ONE source of truth for the version: nixpkgs.
+## Important Clarification
 
-`javascript/library/Taskfile.yml` setup symlinks the Nix-store playwright
-into `node_modules/playwright` so node ESM resolution finds it
-(NODE_PATH is ignored for ESM):
+A NixOS/Nixpkgs OCI base image gives the container a Linux filesystem with Nix
+available. It does not boot a full NixOS machine with systemd managing
+services. That should be fine for this harness because Apple `container` runs
+process containers, and the harness needs command execution plus Nix flakes,
+not system services.
 
-    npm ci
-    mkdir -p node_modules
-    ln -sfT "$PLAYWRIGHT_NPM_PATH" node_modules/playwright
+## Planned Folder Layout
 
-`browser.test.js` can still filter WebKit out when `PLAYWRIGHT_SKIP_WEBKIT=1`
-is set, but Linux no longer sets it. The JavaScript library test commands run
-Node browser tests through `PLAYWRIGHT_FHS` when available.
+```text
+container/
+  aarch64-darwin-apple-container-codex-universal/
+    Containerfile
+    bootstrap-container-tools.sh
+    container-build.sh
+    container-healthcheck.sh
+    container-pull.sh
+    container-run.sh
+    container-shell.sh
+    container-suite.sh
+    flake.nix
+    flake.lock
+    README.md
 
+  aarch64-darwin-apple-container-nixos-25.11/
+    Containerfile
+    container-build.sh
+    container-healthcheck.sh
+    container-pull.sh
+    container-run.sh
+    container-shell.sh
+    container-suite.sh
+    flake.nix
+    flake.lock
+    README.md
+```
 
-FUTURE WORK (in priority order)
--------------------------------
+## Implementation Rules
 
-1. PLAYWRIGHT VERSION COUPLING (low effort, ongoing):
-   Today the Playwright version is governed by the nixpkgs flake input
-   (currently nixos-25.11). Bumping the nixpkgs input bumps Playwright
-   in lockstep. New Playwright features are only available after nixpkgs
-   picks them up. Track this and bump the channel when needed.
+- Do not introduce a shared `CODEX_HARNESS_CONTAINERFILE` option.
+- Do not make one script switch between base-image modes.
+- Prefer duplicated, easy-to-read scripts over clever shared logic.
+- Keep Apple `container` as the macOS container runtime.
+- Keep `/workspace/v02` as the in-container repo path.
+- Keep bind-mounted and image-contained workspace modes.
+- Keep the same `container-suite.sh both test|coverage` semantics.
+- Keep sub-repo toolchains in their existing per-repo flakes.
 
-2. COLD-PATH WEBKIT MYSTERY (resolved, but worth a note):
-   Earlier (apt-based) cold-path runs hit a different WebKit failure:
-   "page.goto: WebKit encountered an internal error". Apt-package-version
-   diff showed identical packages between warm and cold images. Never
-   diagnosed. Now obsolete because the apt path is gone, but watch for
-   similar surprises when bumping nixpkgs Playwright.
+## Existing Codex Universal Solution
 
-3. macOS HOST INVOCATION:
-   Today, running `cd javascript && nix develop --command task setup`
-   on a developer macOS laptop pulls Linux-shaped Playwright browsers
-   from nixpkgs — generally fine for a Linux container, undefined on
-   bare macOS. Browser tests are container-only. Document if anyone
-   asks; otherwise leave as-is.
+- Move current `container/*` files into:
 
-4. OFFLINE OPERATION:
-   With prefer-offline=true and one successful setup, the lifecycle
-   works without network for all three languages. True --network=none
-   may still hit edge cases (npm registry verification on `npm ci` if
-   cache is stale). Worth a future test pass with a fully populated
-   container cache.
+  ```text
+  container/aarch64-darwin-apple-container-codex-universal/
+  ```
 
+- Preserve behavior exactly unless a path update is required by the move.
+- Keep runtime Nix bootstrap here because the base image does not ship this
+  harness's Nix setup.
+- Keep existing root task/just command names pointed at this solution until the
+  NixOS solution is proven.
 
-COMMIT GRAPH (local, all on `add-nix-flake` branches)
------------------------------------------------------
+## New NixOS 25.11 Solution
 
-Parent — last committed state before this final round:
-  0be509b  Wire orchestration through Nix dev shells (Option A) + phase model
-  26498f2  Lock flake inputs
-  ac302a6  Add Nix dev shells per sub-repo + container
+- Create:
 
-This change:
-  Run Nix-packaged Playwright WebKit through a Linux FHS runtime wrapper
+  ```text
+  container/aarch64-darwin-apple-container-nixos-25.11/
+  ```
 
+- Use a Nix/NixOS 25.11 base image with Nix already available.
+- Do not curl-install Nix at runtime.
+- Provide `task`, `just`, shell basics, and any wrapper dependencies via the
+  solution's own container flake.
+- Prewarm the same flakes into `/nix/store`:
 
-VALIDATION NUMBERS (last clean runs)
-------------------------------------
+  ```text
+  container, python, javascript, rust, test-harness
+  ```
 
-  Warm container:test (apt-based, pre-migration):    ~3:15 (BOOTSTRAP=0) / ~4:07 (BOOTSTRAP=1)
-  Cold container:test (apt-based, pre-migration):    ~4:44 (with apt+playwright provision)
-  Nix overhead (cold − warm):                        ~90s
-  Nix-native warm container-suite both test:         passes task + just, including Chromium + WebKit
-  Nix-native warm container-suite both coverage:     passes task + just with 100% coverage gates
-  Nix-native cold container-suite both test:         passes task + just, including Chromium + WebKit
+- Copy the repository source into `/workspace/v02` for image-mode runs.
 
+## Root Command Strategy
 
-KEY PRINCIPLES PRESERVED
-------------------------
+- Add explicit root task/just commands for each solution.
+- Keep the existing command names pointed at the current Codex Universal
+  solution until the NixOS solution is proven.
+- Add clearly named NixOS commands, for example:
 
-  ✓ Host stays Nix-free
-  ✓ Each sub-repo declares its own environment via flake.nix
-  ✓ No root-level flake; sub-repos are autonomous
-  ✓ Pre-warm in the image gives sub-second `nix develop` at runtime
-  ✓ Phase model: provision / setup / build / test / coverage / clean / purge
-  ✓ Apt-get fully eliminated from the harness's own code (codex-universal
-    base still uses it internally for Python/Node/Rust/Go via mise; that's
-    upstream's concern)
-  ✓ Playwright npm module and browser bundle still come from nixpkgs
+  ```sh
+  task container:nixos:test
+  task container:nixos:coverage
+  just container-nixos-test
+  just container-nixos-coverage
+  ```
+
+## Validation Plan
+
+- [x] After moving the existing files, run a smoke check that the current
+  Codex Universal solution still builds/runs from its new folder.
+- [x] Pull or smoke-run the NixOS 25.11 base image with Apple `container`.
+- [x] Build the new NixOS-based harness image.
+- [x] Run the NixOS healthcheck.
+- [x] Run NixOS `both test`.
+- [x] Run NixOS `both coverage`.
+- [x] Only then update docs to describe both container solutions.

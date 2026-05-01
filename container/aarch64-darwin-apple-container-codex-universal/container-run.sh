@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+solution_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$solution_dir/../.." && pwd)"
+solution_path="${solution_dir#"$repo_root"/}"
 
 container_bin="${CONTAINER:-}"
 if [[ -z "$container_bin" ]]; then
@@ -34,14 +36,14 @@ fi
 # Enter the container Nix dev shell so task + just are on PATH for the
 # parent Taskfile/justfile orchestration. Inner aggregates wrap each
 # language call in `cd <lang> && nix develop --command ...` themselves.
-command="nix develop ./container --command bash -c $(printf '%q' "$command")"
+command="nix develop ./$solution_path --command bash -c $(printf '%q' "$command")"
 
 # Bootstrap installs Nix on a fresh codex-universal image, so it must
 # run BEFORE the nix-develop wrap above. Bootstrap modifies /root/.profile
 # but the current shell already loaded that file, so we add the Nix
 # profile bin to PATH explicitly here.
 if [[ "$bootstrap" == "1" || "$bootstrap" == "true" || "$bootstrap" == "yes" ]]; then
-  command="./container/bootstrap-container-tools.sh && export PATH=/root/.nix-profile/bin:\$PATH && $command"
+  command="./$solution_path/bootstrap-container-tools.sh && export PATH=/root/.nix-profile/bin:\$PATH && $command"
 fi
 
 declare -a run_args=(

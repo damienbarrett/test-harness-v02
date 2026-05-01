@@ -14,7 +14,7 @@ tasks:
   provision:
     desc: Provision OS-level prerequisites (Nix, Playwright system libs + browsers)
     cmds:
-      - ./container/bootstrap-container-tools.sh
+      - ./container/aarch64-darwin-apple-container-codex-universal/bootstrap-container-tools.sh
 
   setup:
     desc: Install all dependencies
@@ -116,7 +116,7 @@ tasks:
   image:bootstrap:
     desc: Install container/image tools in the current checked-out repo environment
     cmds:
-      - ./container/bootstrap-container-tools.sh
+      - ./container/aarch64-darwin-apple-container-codex-universal/bootstrap-container-tools.sh
 
   image:setup:
     desc: Install all dependencies in the current checked-out repo environment
@@ -146,144 +146,239 @@ tasks:
   host:container:build:
     desc: Host step - build an Apple container image containing this checkout
     cmds:
-      - ./container/container-build.sh
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-build.sh
 
   host:container:shell:
     desc: Host step - open a shell in the source-containing Apple container image without a host bind mount
     cmds:
-      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-shell.sh
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-codex-universal/container-shell.sh
 
   host:container:task:
     desc: Host step - run an arbitrary task command in the source-containing Apple container image without a host bind mount
     cmds:
-      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh 'task {{.CLI_ARGS}}'
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'task {{.CLI_ARGS}}'
 
   host:container:just:
     desc: Host step - run an arbitrary just command in the source-containing Apple container image without a host bind mount
     cmds:
-      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh 'just {{.CLI_ARGS}}'
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'just {{.CLI_ARGS}}'
 
   host:container:test:
     desc: Host step - run setup and tests in the source-containing Apple container image without a host bind mount
     cmds:
-      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh './container/container-suite.sh both test'
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh both test'
 
   host:container:coverage:
     desc: Host step - run setup and coverage in the source-containing Apple container image without a host bind mount
     cmds:
-      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh './container/container-suite.sh both coverage'
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh both coverage'
 
   host:container:purge:
     desc: Host step - purge generated outputs and setup artifacts in the source-containing Apple container image without a host bind mount
     cmds:
-      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/container-run.sh './container/container-suite.sh both purge'
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh both purge'
 
   container:healthcheck:
     desc: Host step - check Apple container runtime and the selected harness image
     cmds:
-      - ./container/container-healthcheck.sh
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-healthcheck.sh
 
   container:prune-all:
     desc: Host step - reclaim disk space (prune dangling images + remove image builder)
     cmds:
-      - ./container/container-prune-all.sh
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-prune-all.sh
 
   container:pull:
     desc: Host step - pull the Codex universal image for native Apple silicon
     cmds:
-      - ./container/container-pull.sh
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-pull.sh
 
   container:build:
     desc: Host step - build the source-containing harness image
     cmds:
-      - ./container/container-build.sh
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-build.sh
 
   container:shell:
     desc: Host step - open an interactive shell in the selected image with the host checkout bind-mounted
     cmds:
-      - ./container/container-shell.sh
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-shell.sh
 
   container:task:
     desc: Host step - run an arbitrary task command with the host checkout bind-mounted
     cmds:
-      - ./container/container-run.sh 'task {{.CLI_ARGS}}'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'task {{.CLI_ARGS}}'
 
   container:just:
     desc: Host step - run an arbitrary just command with the host checkout bind-mounted
     cmds:
-      - ./container/container-run.sh 'just {{.CLI_ARGS}}'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'just {{.CLI_ARGS}}'
 
   container:task:setup:
     desc: Run task setup inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'task setup'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'task setup'
 
   container:task:test:
     desc: Run task setup and test inside the selected harness image
     cmds:
-      - ./container/container-run.sh './container/container-suite.sh task test'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh task test'
 
   container:task:coverage:
     desc: Run task setup and coverage inside the selected harness image
     cmds:
-      - ./container/container-run.sh './container/container-suite.sh task coverage'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh task coverage'
 
   container:task:clean:
     desc: Run task clean inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'task clean'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'task clean'
 
   container:task:purge:
     desc: Run task purge inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'task purge'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'task purge'
 
   container:just:setup:
     desc: Run just setup inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'just setup'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'just setup'
 
   container:just:test:
     desc: Run just setup and test inside the selected harness image
     cmds:
-      - ./container/container-run.sh './container/container-suite.sh just test'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh just test'
 
   container:just:coverage:
     desc: Run just setup and coverage inside the selected harness image
     cmds:
-      - ./container/container-run.sh './container/container-suite.sh just coverage'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh just coverage'
 
   container:just:clean:
     desc: Run just clean inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'just clean'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'just clean'
 
   container:just:purge:
     desc: Run just purge inside the selected harness image
     cmds:
-      - ./container/container-run.sh 'just purge'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh 'just purge'
 
   container:setup:
     desc: Run both task setup and just setup inside one container
     cmds:
-      - ./container/container-run.sh './container/container-suite.sh both setup'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh both setup'
 
   container:test:
     desc: Run both task and just setup/test inside one container
     cmds:
-      - ./container/container-run.sh './container/container-suite.sh both test'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh both test'
 
   container:coverage:
     desc: Run both task and just setup/coverage inside one container
     cmds:
-      - ./container/container-run.sh './container/container-suite.sh both coverage'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh both coverage'
 
   container:clean:
     desc: Run both task clean and just clean inside one container
     cmds:
-      - ./container/container-run.sh './container/container-suite.sh both clean'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh both clean'
 
   container:purge:
     desc: Run both task purge and just purge inside one container
     cmds:
-      - ./container/container-run.sh './container/container-suite.sh both purge'
+      - ./container/aarch64-darwin-apple-container-codex-universal/container-run.sh './container/aarch64-darwin-apple-container-codex-universal/container-suite.sh both purge'
+
+  host:container:nixos:build:
+    desc: Host step - build the NixOS 25.11 Apple container image containing this checkout
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-build.sh
+
+  host:container:nixos:healthcheck:
+    desc: Host step - check the source-containing NixOS 25.11 Apple container image
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64-nixos}" ./container/aarch64-darwin-apple-container-nixos-25.11/container-healthcheck.sh
+
+  host:container:nixos:shell:
+    desc: Host step - open a shell in the source-containing NixOS 25.11 Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64-nixos}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-nixos-25.11/container-shell.sh
+
+  host:container:nixos:task:
+    desc: Host step - run an arbitrary task command in the source-containing NixOS 25.11 Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64-nixos}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh 'task {{.CLI_ARGS}}'
+
+  host:container:nixos:just:
+    desc: Host step - run an arbitrary just command in the source-containing NixOS 25.11 Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64-nixos}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh 'just {{.CLI_ARGS}}'
+
+  host:container:nixos:test:
+    desc: Host step - run setup and tests in the source-containing NixOS 25.11 Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64-nixos}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh './container/aarch64-darwin-apple-container-nixos-25.11/container-suite.sh both test'
+
+  host:container:nixos:coverage:
+    desc: Host step - run setup and coverage in the source-containing NixOS 25.11 Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64-nixos}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh './container/aarch64-darwin-apple-container-nixos-25.11/container-suite.sh both coverage'
+
+  host:container:nixos:purge:
+    desc: Host step - purge generated outputs and setup artifacts in the source-containing NixOS 25.11 Apple container image without a host bind mount
+    cmds:
+      - CODEX_HARNESS_IMAGE="${CODEX_HARNESS_IMAGE:-codex-harness:arm64-nixos}" CODEX_HARNESS_WORKSPACE_MODE=image ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh './container/aarch64-darwin-apple-container-nixos-25.11/container-suite.sh both purge'
+
+  container:nixos:healthcheck:
+    desc: Host step - check Apple container runtime and the selected NixOS 25.11 image
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-healthcheck.sh
+
+  container:nixos:pull:
+    desc: Host step - pull the NixOS 25.11 base image for native Apple silicon
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-pull.sh
+
+  container:nixos:build:
+    desc: Host step - build the NixOS 25.11 source-containing harness image
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-build.sh
+
+  container:nixos:shell:
+    desc: Host step - open an interactive shell in the NixOS 25.11 image with the host checkout bind-mounted
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-shell.sh
+
+  container:nixos:task:
+    desc: Host step - run an arbitrary task command in the NixOS 25.11 image with the host checkout bind-mounted
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh 'task {{.CLI_ARGS}}'
+
+  container:nixos:just:
+    desc: Host step - run an arbitrary just command in the NixOS 25.11 image with the host checkout bind-mounted
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh 'just {{.CLI_ARGS}}'
+
+  container:nixos:setup:
+    desc: Run both task setup and just setup inside one NixOS 25.11 container
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh './container/aarch64-darwin-apple-container-nixos-25.11/container-suite.sh both setup'
+
+  container:nixos:test:
+    desc: Run both task and just setup/test inside one NixOS 25.11 container
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh './container/aarch64-darwin-apple-container-nixos-25.11/container-suite.sh both test'
+
+  container:nixos:coverage:
+    desc: Run both task and just setup/coverage inside one NixOS 25.11 container
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh './container/aarch64-darwin-apple-container-nixos-25.11/container-suite.sh both coverage'
+
+  container:nixos:clean:
+    desc: Run both task clean and just clean inside one NixOS 25.11 container
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh './container/aarch64-darwin-apple-container-nixos-25.11/container-suite.sh both clean'
+
+  container:nixos:purge:
+    desc: Run both task purge and just purge inside one NixOS 25.11 container
+    cmds:
+      - ./container/aarch64-darwin-apple-container-nixos-25.11/container-run.sh './container/aarch64-darwin-apple-container-nixos-25.11/container-suite.sh both purge'

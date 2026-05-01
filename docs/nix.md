@@ -1,8 +1,8 @@
 # Nix in the harness
 
 Each language sub-repository declares its own dev shell via `flake.nix`.
-The container layer ships a flake too, providing `task` and `just`. The
-host stays Nix-free; only the container needs Nix installed.
+Each Apple container solution ships a flake too, providing `task` and
+`just`. The host stays Nix-free; only the container needs Nix installed.
 
 ## Channel pin
 
@@ -14,10 +14,11 @@ deliberate, per-sub-repo change.
 | File | Provides |
 |---|---|
 | `python/flake.nix`        | python 3.13 + uv |
-| `javascript/flake.nix`    | node 22 + bun + deno + Playwright browser FHS wrapper |
+| `javascript/flake.nix`    | node 22 + bun + deno + JavaScript FHS wrapper for Playwright and npm-native component tooling |
 | `rust/flake.nix`          | rust 1.92.0 with `wasm32-wasip1` and `llvm-tools-preview`, plus `cargo-component` and `cargo-llvm-cov` |
 | `test-harness/flake.nix`  | python 3.13 + uv (runs the harness scripts) |
-| `container/flake.nix`     | task + just |
+| `container/aarch64-darwin-apple-container-codex-universal/flake.nix` | task + just for the Codex Universal based Apple container |
+| `container/aarch64-darwin-apple-container-nixos-25.11/flake.nix` | task + just for the NixOS 25.11 based Apple container |
 
 There is no root `flake.nix` by design. The principle "language sub-repos
 declare their own environment" means each sub-repo is self-contained;
@@ -31,7 +32,8 @@ From inside the container (or any environment with Nix installed):
 ```sh
 nix develop ./python    --command task setup
 nix develop ./rust      --command task test
-nix develop ./container --command bash
+nix develop ./container/aarch64-darwin-apple-container-codex-universal --command bash
+nix develop ./container/aarch64-darwin-apple-container-nixos-25.11 --command bash
 ```
 
 ## What Nix owns vs what stays as-is
@@ -45,10 +47,9 @@ nix develop ./container --command bash
 
 ## Lockfiles
 
-`flake.lock` files are not committed yet. They are generated on first
-`nix develop` and should be committed once produced inside the container.
-Until they are, each flake floats on the tip of the `nixos-25.11`
-nixpkgs branch.
+`flake.lock` files are committed per sub-repo and per container solution.
+They pin nixpkgs and any extra flake inputs at that repository boundary.
+Update the lockfile next to the flake whose input changed.
 
 ## Lifecycle phases
 
@@ -63,12 +64,15 @@ depends on the earlier phases having run, but is reversible without them.
 | `test` | runs build artifacts + tests | none | `clean` |
 | `coverage` | runs tests + measures | none | `clean` |
 
-**`provision` is OS-level and image-baked.** The Containerfile runs the
-equivalent of `task provision` at image build time so
-`codex-harness:arm64-nix` ships fully provisioned. On a fresh
-`codex-universal:latest` image, `bootstrap-container-tools.sh` runs the
-same logic as a runtime fallback. Idempotent in both directions —
-running `task provision` on an already-provisioned image is a fast no-op.
+**`provision` is OS-level and image-baked.** The Codex Universal
+Containerfile installs Nix and pre-warms the project flakes at image build
+time so `codex-harness:arm64` ships provisioned. On a fresh
+`codex-universal:latest` image, `bootstrap-container-tools.sh` runs the same
+logic as a runtime fallback. The NixOS 25.11 container solution starts from
+`nixpkgs/nix-flakes:nixos-25.11-aarch64-linux`, where Nix is already present,
+and pre-warms the same project flakes. Idempotent in both directions:
+running `task provision` on an already-provisioned Codex Universal image is a
+fast no-op.
 
 **`setup` is project-level and per-checkout.** Realises lockfile state:
 `uv sync`, `npm ci`, `cargo fetch`. Fast on second runs because deps
@@ -91,7 +95,7 @@ boundary; resetting it means rebuilding the image.
 | System libs (libgtk-4, libgstreamer, …) | `pkgs.playwright-driver` |
 | Browser binaries (Chromium, WebKit, FFmpeg) | `pkgs.playwright-driver.browsers` |
 | `playwright` npm module | `pkgs.playwright` (symlinked into `node_modules`) |
-| Linux browser runtime shape | `javascript-playwright-fhs` from `javascript/flake.nix` |
+| Linux FHS runtime shape | `javascript-fhs` from `javascript/flake.nix` |
 
 `javascript/library/package.json` does **not** declare `playwright` as a
 dependency. There is one source of truth for the Playwright version:
@@ -101,9 +105,11 @@ paths are bit-for-bit identical for Playwright. No `apt-get`. No
 `npx playwright install`.
 
 On Linux, WebKit is launched from inside the `PLAYWRIGHT_FHS` wrapper
-exported by the JavaScript flake. The wrapper provides the FHS-style
-library layout expected by WebKit's runtime `dlopen` calls while keeping
-the browser binaries and npm module in nixpkgs.
+exported by the JavaScript flake. JavaScript componentization uses the same
+wrapper through `JCO_FHS`, because npm's `wizer` binary expects the
+conventional glibc loader path. Both variables point at the Nix-built
+`javascript-fhs` wrapper, keeping FHS compatibility in Nix configuration
+instead of baking `/lib` loader symlinks into container images.
 
 The trade: Playwright version follows nixpkgs's release cadence rather
 than `npm install playwright@latest`. Bumping nixpkgs requires
@@ -141,7 +147,7 @@ alongside the language toolchain — so a sub-repo run autonomously
 (`cd python && nix develop --command task setup`) has both the
 runtime *and* the orchestrator on PATH.
 
-The container image installs Nix at build time and pre-warms every
+The container images install or already include Nix, then pre-warm every
 flake (`nix develop --command true` against each), so `/nix/store` is
 populated before runtime. Ephemeral `--rm` runs hit the cache and
 `nix develop` is sub-second.
@@ -169,7 +175,12 @@ Done:
   above. Locks pin nixpkgs to `nixos-25.11 @ a4bf066`.
 - Each language flake also provides `pkgs.go-task` and `pkgs.just` so
   the sub-repo's lifecycle runs without the parent.
-- Container image installs Nix and pre-warms every flake at build time.
+- Codex Universal Apple container solution lives under
+  `container/aarch64-darwin-apple-container-codex-universal/`.
+- NixOS 25.11 Apple container solution lives under
+  `container/aarch64-darwin-apple-container-nixos-25.11/`.
+- Container images install or already include Nix and pre-warm every flake at
+  build time.
 - `bootstrap-container-tools.sh` is now a 30-line fallback that installs
   Nix on a fresh codex-universal image (used when running the base image
   directly without the harness's image build).
@@ -185,6 +196,9 @@ Done:
   exposes the bootstrap script as a discoverable verb.
 - JavaScript browser tests run WebKit through the Nix-provided FHS wrapper,
   so the Linux browser matrix no longer needs apt or `PLAYWRIGHT_SKIP_WEBKIT`.
+- JavaScript componentization runs `jco` through the same FHS wrapper via
+  `JCO_FHS`, so npm-native Linux binaries do not require image-baked loader
+  symlinks.
 - `npx playwright install` is not part of setup or provision. Setup is
   `npm ci` plus the Nix-store Playwright symlink.
 
@@ -196,3 +210,13 @@ runtime for graphics and media libraries loaded outside the direct ELF
 closure. The flake exports `PLAYWRIGHT_FHS`; JavaScript library test
 commands use it for Node browser tests. Chromium and WebKit both run from
 the nixpkgs browser bundle.
+
+## JavaScript componentization on Linux
+
+`jco componentize` shells out to npm-provided native binaries, including
+`@bytecodealliance/wizer-linux-arm64/wizer` on Apple-silicon Linux
+containers. That binary expects `/lib/ld-linux-aarch64.so.1`, which a
+NixOS-style filesystem does not provide by default. The JavaScript flake
+therefore exports `JCO_FHS` pointing at the same `javascript-fhs` wrapper
+used by Playwright. The component Taskfile and justfile run `jco componentize`
+and `jco transpile` through that wrapper when it is available.

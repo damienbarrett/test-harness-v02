@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+solution_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$solution_dir/../.." && pwd)"
+solution_path="${solution_dir#"$repo_root"/}"
 
 container_bin="${CONTAINER:-}"
 if [[ -z "$container_bin" ]]; then
@@ -17,21 +19,26 @@ fi
 
 arch="${CODEX_HARNESS_ARCH:-arm64}"
 cpus="${CODEX_HARNESS_CPUS:-8}"
-image="${CODEX_HARNESS_IMAGE:-ghcr.io/openai/codex-universal:latest}"
+image="${CODEX_HARNESS_IMAGE:-nixpkgs/nix-flakes:nixos-25.11-aarch64-linux}"
 memory="${CODEX_HARNESS_MEMORY:-12G}"
 workspace="${CODEX_HARNESS_WORKSPACE:-/workspace/v02}"
-bootstrap="${CODEX_HARNESS_BOOTSTRAP:-1}"
 cargo_target_dir="${CODEX_HARNESS_CARGO_TARGET_DIR:-/tmp/codex-harness-cargo-target}"
 uv_cache_dir="${CODEX_HARNESS_UV_CACHE_DIR:-/tmp/codex-harness-uv-cache}"
 workspace_mode="${CODEX_HARNESS_WORKSPACE_MODE:-bind}"
 
-command="exec nix develop ./container"
-if [[ "$bootstrap" == "1" || "$bootstrap" == "true" || "$bootstrap" == "yes" ]]; then
-  command="./container/bootstrap-container-tools.sh && export PATH=/root/.nix-profile/bin:\$PATH && $command"
+if [[ $# -eq 0 ]]; then
+  command="bash"
+else
+  command="$*"
 fi
 
+# Enter the container Nix dev shell so task + just are on PATH for the
+# parent Taskfile/justfile orchestration. Inner aggregates wrap each
+# language call in `cd <lang> && nix develop --command ...` themselves.
+command="nix develop ./$solution_path --command bash -c $(printf '%q' "$command")"
+
 declare -a run_args=(
-  run --rm -it
+  run --rm
   --arch "$arch"
   --memory "$memory"
   --cpus "$cpus"
@@ -40,6 +47,7 @@ declare -a run_args=(
   --env CODEX_ENV_RUST_VERSION="${CODEX_ENV_RUST_VERSION:-1.92.0}"
   --env CODEX_ENV_GO_VERSION="${CODEX_ENV_GO_VERSION:-1.25.9}"
   --env CARGO_TARGET_DIR="$cargo_target_dir"
+  --env NIX_CONFIG="${NIX_CONFIG:-experimental-features = nix-command flakes}"
   --env UV_CACHE_DIR="$uv_cache_dir"
 )
 
@@ -55,6 +63,6 @@ case "$workspace_mode" in
     ;;
 esac
 
-run_args+=(--workdir "$workspace" "$image" -lc "$command")
+run_args+=(--workdir "$workspace" "$image" /bin/sh -c "$command")
 
 exec "$container_bin" "${run_args[@]}"

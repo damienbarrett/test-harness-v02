@@ -1,0 +1,48 @@
+FROM ghcr.io/openai/codex-universal:latest
+
+SHELL ["/bin/bash", "-lc"]
+
+ENV CODEX_ENV_PYTHON_VERSION=3.13 \
+    CODEX_ENV_NODE_VERSION=22 \
+    CODEX_ENV_RUST_VERSION=1.92.0 \
+    CODEX_ENV_GO_VERSION=1.25.9 \
+    CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target \
+    UV_CACHE_DIR=/tmp/codex-harness-uv-cache \
+    CARGO_BUILD_JOBS=1 \
+    CARGO_PROFILE_RELEASE_LTO=false \
+    CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 \
+    USER=root \
+    HOME=/root \
+    PATH=/root/.nix-profile/bin:/root/.local/bin:/root/.cargo/bin:/root/go/bin:/root/.local/share/mise/shims:${PATH}
+
+# Single-user Nix install: pre-create nixbld so the installer's packaged
+# nix.conf is satisfied even though we are root in a non-systemd container.
+RUN /opt/codex/setup_universal.sh \
+    && groupadd -r nixbld \
+    && for i in $(seq 1 10); do useradd -r -g nixbld -G nixbld -d /var/empty -s /sbin/nologin "nixbld$i" || true; done \
+    && curl -L https://nixos.org/nix/install -o /tmp/nix-install \
+    && sh /tmp/nix-install --no-daemon --yes \
+    && rm /tmp/nix-install \
+    && mkdir -p /root/.config/nix \
+    && echo 'experimental-features = nix-command flakes' > /root/.config/nix/nix.conf
+
+# Pre-warm every flake so the resulting image has every toolchain in
+# /nix/store. First `nix develop` at runtime is then sub-second instead
+# of a 5-15 minute fetch+build (which matters for ephemeral --rm runs).
+COPY container/aarch64-darwin-apple-container-codex-universal/flake.nix \
+     container/aarch64-darwin-apple-container-codex-universal/flake.lock \
+     /tmp/prewarm/container/
+COPY python/flake.nix        python/flake.lock        /tmp/prewarm/python/
+COPY javascript/flake.nix    javascript/flake.lock    /tmp/prewarm/javascript/
+COPY rust/flake.nix          rust/flake.lock          /tmp/prewarm/rust/
+COPY test-harness/flake.nix  test-harness/flake.lock  /tmp/prewarm/test-harness/
+
+RUN cd /tmp/prewarm/container     && nix develop --command true \
+    && cd /tmp/prewarm/python        && nix develop --command true \
+    && cd /tmp/prewarm/javascript    && nix develop --command true \
+    && cd /tmp/prewarm/rust          && nix develop --command true \
+    && cd /tmp/prewarm/test-harness  && nix develop --command true \
+    && rm -rf /tmp/prewarm
+
+WORKDIR /workspace/v02
+COPY . /workspace/v02

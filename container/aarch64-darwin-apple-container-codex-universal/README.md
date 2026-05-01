@@ -1,4 +1,4 @@
-# Container and Cloud Lifecycle
+# Codex Universal Apple Container Lifecycle
 
 The harness has two separate lifecycle layers:
 
@@ -48,7 +48,7 @@ just purge
 Cloud setup scripts should usually run:
 
 ```sh
-./container/bootstrap-container-tools.sh
+./container/aarch64-darwin-apple-container-codex-universal/bootstrap-container-tools.sh
 task setup
 ```
 
@@ -84,7 +84,7 @@ just host-container-purge
 `host:container:build` builds `codex-harness:arm64` from the repository root. The image contains:
 
 - the Codex universal base image and pinned runtime versions
-- harness tools installed by `container/Containerfile`
+- harness tools installed by `container/aarch64-darwin-apple-container-codex-universal/Containerfile`
 - locked Playwright browser dependencies for the JavaScript browser tests
 - this repository source, including initialized submodules
 
@@ -95,7 +95,7 @@ CODEX_HARNESS_WORKSPACE_MODE=image
 CODEX_HARNESS_IMAGE=codex-harness:arm64
 ```
 
-In `image` workspace mode, `container/container-run.sh` does not pass a `--volume` flag. The repository path inside the image is `/workspace/v02`.
+In `image` workspace mode, `container/aarch64-darwin-apple-container-codex-universal/container-run.sh` does not pass a `--volume` flag. The repository path inside the image is `/workspace/v02`.
 
 Open a no-bind shell in the image:
 

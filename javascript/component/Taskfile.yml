@@ -19,8 +19,18 @@ tasks:
   build:
     desc: Build the WASM component and transpile for testing
     cmds:
-      - npx jco componentize src/app.js --wit {{.WIT_PATH}} -n {{.WORLD_NAME}} -d all --enable clocks --enable random --enable stdio -o {{.OUTPUT_WASM}}
-      - npx jco transpile {{.OUTPUT_WASM}} -o transpiled/
+      - >-
+        if [ -n "${JCO_FHS:-}" ]; then
+          "$JCO_FHS" -c 'npx jco componentize src/app.js --wit {{.WIT_PATH}} -n {{.WORLD_NAME}} -d all --enable clocks --enable random --enable stdio -o {{.OUTPUT_WASM}}';
+        else
+          npx jco componentize src/app.js --wit {{.WIT_PATH}} -n {{.WORLD_NAME}} -d all --enable clocks --enable random --enable stdio -o {{.OUTPUT_WASM}};
+        fi
+      - >-
+        if [ -n "${JCO_FHS:-}" ]; then
+          "$JCO_FHS" -c 'npx jco transpile {{.OUTPUT_WASM}} -o transpiled/';
+        else
+          npx jco transpile {{.OUTPUT_WASM}} -o transpiled/;
+        fi
 
   test:
     desc: Run tests (builds first)

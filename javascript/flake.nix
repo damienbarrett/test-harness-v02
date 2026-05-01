@@ -8,11 +8,11 @@
       systems = [ "aarch64-linux" "x86_64-linux" "aarch64-darwin" "x86_64-darwin" ];
       forSystems = f: nixpkgs.lib.genAttrs systems
         (system: f nixpkgs.legacyPackages.${system});
-      playwrightFhs = pkgs:
+      javascriptFhs = pkgs:
         pkgs.buildFHSEnv (
           pkgs.appimageTools.defaultFhsEnvArgs
           // {
-            name = "javascript-playwright-fhs";
+            name = "javascript-fhs";
 
             targetPkgs = innerPkgs:
               (pkgs.appimageTools.defaultFhsEnvArgs.targetPkgs innerPkgs)
@@ -110,7 +110,7 @@
       devShells = forSystems (pkgs: {
         default =
           let
-            fhs = if pkgs.stdenv.isLinux then playwrightFhs pkgs else null;
+            fhs = if pkgs.stdenv.isLinux then javascriptFhs pkgs else null;
           in
           pkgs.mkShell {
             packages = [
@@ -136,10 +136,14 @@
               export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
               export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
               ${if pkgs.stdenv.isLinux then ''
-                # WPE WebKit needs an FHS-shaped runtime for dlopen'd graphics
-                # and media libraries. The browser binaries and Playwright npm
-                # module still come from nixpkgs.
-                export PLAYWRIGHT_FHS=${fhs}/bin/javascript-playwright-fhs
+                # Some JavaScript tooling ships npm-native Linux binaries
+                # that expect conventional FHS loader paths. Playwright's WPE
+                # WebKit also needs an FHS-shaped runtime for dlopen'd graphics
+                # and media libraries. The package versions still come from
+                # nixpkgs or package-lock.json; only runtime shape is provided.
+                export JAVASCRIPT_FHS=${fhs}/bin/javascript-fhs
+                export PLAYWRIGHT_FHS=$JAVASCRIPT_FHS
+                export JCO_FHS=$JAVASCRIPT_FHS
               '' else ''
                 export PLAYWRIGHT_SKIP_WEBKIT=1
               ''}

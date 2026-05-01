@@ -12,8 +12,8 @@ setup:
 
 # Build the WASM component and transpile for testing
 build:
-    npx jco componentize src/app.js --wit {{wit_path}} -n {{world_name}} -d all --enable clocks --enable random --enable stdio -o {{output_wasm}}
-    npx jco transpile {{output_wasm}} -o transpiled/
+    if [ -n "${JCO_FHS:-}" ]; then "$JCO_FHS" -c 'npx jco componentize src/app.js --wit {{wit_path}} -n {{world_name}} -d all --enable clocks --enable random --enable stdio -o {{output_wasm}}'; else npx jco componentize src/app.js --wit {{wit_path}} -n {{world_name}} -d all --enable clocks --enable random --enable stdio -o {{output_wasm}}; fi
+    if [ -n "${JCO_FHS:-}" ]; then "$JCO_FHS" -c 'npx jco transpile {{output_wasm}} -o transpiled/'; else npx jco transpile {{output_wasm}} -o transpiled/; fi
 
 # Run tests (builds first)
 test: build

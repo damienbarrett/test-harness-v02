@@ -1,0 +1,37 @@
+FROM nixpkgs/nix-flakes:nixos-25.11-aarch64-linux
+
+SHELL ["/bin/sh", "-c"]
+
+ENV CARGO_TARGET_DIR=/tmp/codex-harness-cargo-target \
+    UV_CACHE_DIR=/tmp/codex-harness-uv-cache \
+    CARGO_BUILD_JOBS=1 \
+    CARGO_PROFILE_RELEASE_LTO=false \
+    CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 \
+    USER=root \
+    HOME=/root \
+    NIX_CONFIG="experimental-features = nix-command flakes" \
+    PATH=/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:${PATH}
+
+RUN mkdir -p /root/.config/nix \
+    && printf '%s\n' 'experimental-features = nix-command flakes' > /root/.config/nix/nix.conf
+
+# Pre-warm every flake so the resulting image has every toolchain in
+# /nix/store. First `nix develop` at runtime is then sub-second instead
+# of a 5-15 minute fetch+build (which matters for ephemeral --rm runs).
+COPY container/aarch64-darwin-apple-container-nixos-25.11/flake.nix \
+     container/aarch64-darwin-apple-container-nixos-25.11/flake.lock \
+     /tmp/prewarm/container/
+COPY python/flake.nix        python/flake.lock        /tmp/prewarm/python/
+COPY javascript/flake.nix    javascript/flake.lock    /tmp/prewarm/javascript/
+COPY rust/flake.nix          rust/flake.lock          /tmp/prewarm/rust/
+COPY test-harness/flake.nix  test-harness/flake.lock  /tmp/prewarm/test-harness/
+
+RUN cd /tmp/prewarm/container     && nix develop --command true \
+    && cd /tmp/prewarm/python        && nix develop --command true \
+    && cd /tmp/prewarm/javascript    && nix develop --command true \
+    && cd /tmp/prewarm/rust          && nix develop --command true \
+    && cd /tmp/prewarm/test-harness  && nix develop --command true \
+    && rm -rf /tmp/prewarm
+
+WORKDIR /workspace/v02
+COPY . /workspace/v02

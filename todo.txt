@@ -1,0 +1,183 @@
+# NixOS 25.11 Apple Container Base
+
+Last updated: 2026-05-01
+
+## Status
+
+- [x] Branch created: `feature/nixos-25.11-container-base`
+- [x] Existing Codex Universal solution moved into its own folder
+- [x] New NixOS 25.11 Apple `container` solution created
+- [x] Root `task` and `just` commands updated
+- [x] Codex Universal moved-folder smoke check passed
+- [x] NixOS 25.11 base image smoke check passed
+- [x] NixOS 25.11 harness image build passed
+- [x] NixOS 25.11 healthcheck passed
+- [x] JavaScript componentization runs through a Nix-owned FHS wrapper
+- [x] NixOS 25.11 `both test` passed
+- [x] NixOS 25.11 `both coverage` passed
+- [x] Documentation updated after validation
+
+## Validation Notes
+
+- Initial no-bind NixOS 25.11 `both test` failed in JavaScript
+  componentization before the FHS wrapper fix:
+
+  ```text
+  npx jco componentize ... -o task-component.wasm
+  (jco componentize) Error: Failed to initialize component:
+  undefined
+  ```
+
+  Python tests passed, JavaScript Node/Bun/Deno tests passed, and Playwright
+  Chromium/WebKit passed before this failure.
+
+- Root cause found: npm's `@bytecodealliance/wizer-linux-arm64/wizer`
+  binary expects the conventional glibc loader path:
+
+  ```text
+  /lib/ld-linux-aarch64.so.1
+  ```
+
+  The file exists, but NixOS-style images do not provide that FHS loader
+  path by default, so Node reports `spawnSync ... ENOENT`.
+
+- Decision: do not bake loader symlinks into the NixOS Containerfile. Fix this
+  in the JavaScript Nix environment with an FHS wrapper for componentization,
+  matching the Playwright FHS approach.
+
+- Bind-mounted NixOS smoke passed after the FHS wrapper change:
+
+  ```text
+  cd javascript && nix develop --command bash -c 'cd component && npm ci && task build'
+  ```
+
+  `JCO_FHS`, `PLAYWRIGHT_FHS`, and `JAVASCRIPT_FHS` all point at the
+  Nix-built `javascript-fhs` wrapper, and `jco componentize` succeeds there.
+  The NixOS harness image was rebuilt successfully after this change; no-bind
+  `both test` passed in the rebuilt image.
+
+- No-bind NixOS `both test` passed with `CODEX_HARNESS_WORKSPACE_MODE=image`.
+  This includes Python, JavaScript, Rust, the test harness parity checks,
+  Playwright Chromium/WebKit, Bun, Deno, and JavaScript WASM componentization.
+
+- No-bind NixOS `both coverage` passed with `CODEX_HARNESS_WORKSPACE_MODE=image`.
+  Python, JavaScript, and Rust all reached their configured 100% coverage
+  thresholds through both `task` and `just`.
+
+- Documentation updated in `container/README.md`, the two per-solution
+  container READMEs, and `docs/nix.md`.
+
+## Goal
+
+Add a second, explicit Apple `container` solution whose base image is
+Nix/NixOS 25.11, while preserving the current Codex Universal based solution.
+Keep this straightforward by using separate folders and separate files, not
+option switches.
+
+## Important Clarification
+
+A NixOS/Nixpkgs OCI base image gives the container a Linux filesystem with Nix
+available. It does not boot a full NixOS machine with systemd managing
+services. That should be fine for this harness because Apple `container` runs
+process containers, and the harness needs command execution plus Nix flakes,
+not system services.
+
+## Planned Folder Layout
+
+```text
+container/
+  aarch64-darwin-apple-container-codex-universal/
+    Containerfile
+    bootstrap-container-tools.sh
+    container-build.sh
+    container-healthcheck.sh
+    container-pull.sh
+    container-run.sh
+    container-shell.sh
+    container-suite.sh
+    flake.nix
+    flake.lock
+    README.md
+
+  aarch64-darwin-apple-container-nixos-25.11/
+    Containerfile
+    container-build.sh
+    container-healthcheck.sh
+    container-pull.sh
+    container-run.sh
+    container-shell.sh
+    container-suite.sh
+    flake.nix
+    flake.lock
+    README.md
+```
+
+## Implementation Rules
+
+- Do not introduce a shared `CODEX_HARNESS_CONTAINERFILE` option.
+- Do not make one script switch between base-image modes.
+- Prefer duplicated, easy-to-read scripts over clever shared logic.
+- Keep Apple `container` as the macOS container runtime.
+- Keep `/workspace/v02` as the in-container repo path.
+- Keep bind-mounted and image-contained workspace modes.
+- Keep the same `container-suite.sh both test|coverage` semantics.
+- Keep sub-repo toolchains in their existing per-repo flakes.
+
+## Existing Codex Universal Solution
+
+- Move current `container/*` files into:
+
+  ```text
+  container/aarch64-darwin-apple-container-codex-universal/
+  ```
+
+- Preserve behavior exactly unless a path update is required by the move.
+- Keep runtime Nix bootstrap here because the base image does not ship this
+  harness's Nix setup.
+- Keep existing root task/just command names pointed at this solution until the
+  NixOS solution is proven.
+
+## New NixOS 25.11 Solution
+
+- Create:
+
+  ```text
+  container/aarch64-darwin-apple-container-nixos-25.11/
+  ```
+
+- Use a Nix/NixOS 25.11 base image with Nix already available.
+- Do not curl-install Nix at runtime.
+- Provide `task`, `just`, shell basics, and any wrapper dependencies via the
+  solution's own container flake.
+- Prewarm the same flakes into `/nix/store`:
+
+  ```text
+  container, python, javascript, rust, test-harness
+  ```
+
+- Copy the repository source into `/workspace/v02` for image-mode runs.
+
+## Root Command Strategy
+
+- Add explicit root task/just commands for each solution.
+- Keep the existing command names pointed at the current Codex Universal
+  solution until the NixOS solution is proven.
+- Add clearly named NixOS commands, for example:
+
+  ```sh
+  task container:nixos:test
+  task container:nixos:coverage
+  just container-nixos-test
+  just container-nixos-coverage
+  ```
+
+## Validation Plan
+
+- [x] After moving the existing files, run a smoke check that the current
+  Codex Universal solution still builds/runs from its new folder.
+- [x] Pull or smoke-run the NixOS 25.11 base image with Apple `container`.
+- [x] Build the new NixOS-based harness image.
+- [x] Run the NixOS healthcheck.
+- [x] Run NixOS `both test`.
+- [x] Run NixOS `both coverage`.
+- [x] Only then update docs to describe both container solutions.

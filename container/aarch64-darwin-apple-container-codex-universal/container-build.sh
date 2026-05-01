@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-container_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "$container_dir/.." && pwd)"
+solution_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$solution_dir/../.." && pwd)"
+solution_path="${solution_dir#"$repo_root"/}"
 
 container_bin="${CONTAINER:-}"
 if [[ -z "$container_bin" ]]; then
@@ -77,6 +78,6 @@ fi
   "$container_bin" build \
     --arch "$arch" \
     --tag "$tag" \
-    --file container/Containerfile \
+    --file "$solution_path/Containerfile" \
     .
 )

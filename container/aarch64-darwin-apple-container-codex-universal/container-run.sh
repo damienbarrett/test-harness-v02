@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+solution_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$solution_dir/../.." && pwd)"
+solution_path="${solution_dir#"$repo_root"/}"
 
 container_bin="${CONTAINER:-}"
 if [[ -z "$container_bin" ]]; then
@@ -21,11 +23,8 @@ image="${CODEX_HARNESS_IMAGE:-ghcr.io/openai/codex-universal:latest}"
 memory="${CODEX_HARNESS_MEMORY:-12G}"
 workspace="${CODEX_HARNESS_WORKSPACE:-/workspace/v02}"
 bootstrap="${CODEX_HARNESS_BOOTSTRAP:-1}"
-harness_dir="${CODEX_HARNESS_DIR:-/tmp/codex-harness}"
-harness_output_dir="${CODEX_HARNESS_OUTPUT_DIR:-$harness_dir/outputs}"
-harness_cache_dir="${CODEX_HARNESS_CACHE_DIR:-$harness_dir/cache}"
-cargo_target_dir="${CODEX_HARNESS_CARGO_TARGET_DIR:-$harness_output_dir/rust/cargo-target}"
-uv_cache_dir="${CODEX_HARNESS_UV_CACHE_DIR:-$harness_cache_dir/uv}"
+cargo_target_dir="${CODEX_HARNESS_CARGO_TARGET_DIR:-/tmp/codex-harness-cargo-target}"
+uv_cache_dir="${CODEX_HARNESS_UV_CACHE_DIR:-/tmp/codex-harness-uv-cache}"
 workspace_mode="${CODEX_HARNESS_WORKSPACE_MODE:-bind}"
 
 if [[ $# -eq 0 ]]; then
@@ -34,8 +33,17 @@ else
   command="$*"
 fi
 
+# Enter the container Nix dev shell so task + just are on PATH for the
+# parent Taskfile/justfile orchestration. Inner aggregates wrap each
+# language call in `cd <lang> && nix develop --command ...` themselves.
+command="nix develop ./$solution_path --command bash -c $(printf '%q' "$command")"
+
+# Bootstrap installs Nix on a fresh codex-universal image, so it must
+# run BEFORE the nix-develop wrap above. Bootstrap modifies /root/.profile
+# but the current shell already loaded that file, so we add the Nix
+# profile bin to PATH explicitly here.
 if [[ "$bootstrap" == "1" || "$bootstrap" == "true" || "$bootstrap" == "yes" ]]; then
-  command="./container/bootstrap-container-tools.sh && { $command; }"
+  command="./$solution_path/bootstrap-container-tools.sh && export PATH=/root/.nix-profile/bin:\$PATH && $command"
 fi
 
 declare -a run_args=(
@@ -47,9 +55,6 @@ declare -a run_args=(
   --env CODEX_ENV_NODE_VERSION="${CODEX_ENV_NODE_VERSION:-22}"
   --env CODEX_ENV_RUST_VERSION="${CODEX_ENV_RUST_VERSION:-1.92.0}"
   --env CODEX_ENV_GO_VERSION="${CODEX_ENV_GO_VERSION:-1.25.9}"
-  --env HARNESS_DIR="$harness_dir"
-  --env HARNESS_OUTPUT_DIR="$harness_output_dir"
-  --env HARNESS_CACHE_DIR="$harness_cache_dir"
   --env CARGO_TARGET_DIR="$cargo_target_dir"
   --env UV_CACHE_DIR="$uv_cache_dir"
 )

@@ -3,19 +3,13 @@ default:
     @just --list
 
 # Install all dependencies
-setup:
-    just library/setup
-    just component/setup
+setup: library-setup component-setup
 
 # Run all tests
-test:
-    just library/test
-    just component/test
+test: library-test component-test
 
 # Run all tests with coverage
-coverage:
-    just library/coverage
-    just component/coverage
+coverage: library-coverage component-coverage
 
 # Remove generated outputs while preserving dependency state
 clean: library-clean component-clean

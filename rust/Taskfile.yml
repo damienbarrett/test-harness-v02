@@ -17,31 +17,31 @@ tasks:
   setup:
     desc: Install all dependencies
     cmds:
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d library setup
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d component setup
+      - task: library:setup
+      - task: component:setup
 
   test:
     desc: Run all tests
     cmds:
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d library test
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d component test
+      - task: library:test
+      - task: component:test
 
   coverage:
     desc: Run all tests with coverage
     cmds:
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d library coverage
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d component coverage
+      - task: library:coverage
+      - task: component:coverage
 
   clean:
     desc: Remove generated outputs while preserving dependency state
     cmds:
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d library clean
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d component clean
+      - task: library:clean
+      - task: component:clean
       - rm -rf "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}/rust"
 
   purge:
     desc: Remove generated outputs and setup artifacts
     cmds:
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d library purge
-      - HARNESS_DIR="${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}" HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}" HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}" task -d component purge
+      - task: library:purge
+      - task: component:purge
       - rm -rf "{{.TASKFILE_DIR}}/.harness" "${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}/rust" "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}/rust"

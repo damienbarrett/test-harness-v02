@@ -1,10 +1,9 @@
 version: "3"
 
 # Each top-level lifecycle verb enters the sub-repo's Nix dev shell so the
-# language Taskfile sees its declared toolchain on PATH. The per-language
-# wrapper tasks (python-setup, javascript-setup, ...) mirror the justfile
-# pattern so check:runners parity is preserved. Language sub-repo Taskfiles
-# remain accessible directly via `cd <lang> && task <verb>` (autonomous).
+# language Taskfile sees its declared toolchain on PATH. Task and Just runner
+# files are intentionally self-contained; neither runner shells out to the
+# other for normal lifecycle work.
 tasks:
   default:
     cmds:

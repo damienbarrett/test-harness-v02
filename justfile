@@ -7,40 +7,20 @@ provision:
     ./container/aarch64-darwin-apple-container-codex-universal/bootstrap-container-tools.sh
 
 # Install all dependencies
-setup:
-    just python/setup
-    just javascript/setup
-    just rust/setup
-    just test-harness/setup
+setup: python-setup javascript-setup rust-setup test-harness-setup
 
 # Run all tests
-test:
-    just python/test
-    just javascript/test
-    just rust/test
-    just test-harness/test
+test: python-test javascript-test rust-test test-harness-test
 
 # Run all tests with coverage
-coverage:
-    just python/coverage
-    just javascript/coverage
-    just rust/coverage
-    just test-harness/coverage
+coverage: python-coverage javascript-coverage rust-coverage test-harness-coverage
 
 # Remove generated outputs while preserving dependency state
-clean:
-    just python/clean
-    just javascript/clean
-    just rust/clean
-    just test-harness/clean
+clean: python-clean javascript-clean rust-clean test-harness-clean
     rm -rf .output output
 
 # Remove generated outputs and setup artifacts
-purge:
-    just python/purge
-    just javascript/purge
-    just rust/purge
-    just test-harness/purge
+purge: python-purge javascript-purge rust-purge test-harness-purge
     rm -rf .output output
 
 # Run unified WASM contract tests across all implementations

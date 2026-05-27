@@ -1,0 +1,10 @@
+{
+  "name": "tasks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/count.js",
+  "devDependencies": {
+    "ajv": "^8.0.0"
+  }
+}

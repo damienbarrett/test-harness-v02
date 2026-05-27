@@ -1,0 +1,52 @@
+version: "3"
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  setup:
+    desc: Install npm dependencies (Playwright comes from the Nix flake)
+    cmds:
+      - npm ci
+      # Symlink the Nix-store-installed playwright into node_modules so
+      # ESM imports resolve. PLAYWRIGHT_NPM_PATH is set by the flake's
+      # shellHook; package.json intentionally doesn't declare playwright.
+      - mkdir -p node_modules
+      - ln -sfT "$PLAYWRIGHT_NPM_PATH" node_modules/playwright
+
+  test:
+    desc: Run contract tests across Node, Bun, Deno, Chromium, and WebKit
+    cmds:
+      - |
+        if [ -n "${PLAYWRIGHT_FHS:-}" ]; then
+          "$PLAYWRIGHT_FHS" -c 'node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js'
+        else
+          node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js
+        fi
+      - bun test tests/bun.test.js
+      - deno test --allow-read tests/deno.test.js
+
+  coverage:
+    desc: Run runtime matrix plus Node coverage (100% threshold)
+    cmds:
+      - bun test tests/bun.test.js
+      - deno test --allow-read tests/deno.test.js
+      - |
+        if [ -n "${PLAYWRIGHT_FHS:-}" ]; then
+          "$PLAYWRIGHT_FHS" -c "node --test --test-timeout=60000 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 tests/count.test.js tests/browser.test.js"
+        else
+          node --test --test-timeout=60000 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 tests/count.test.js tests/browser.test.js
+        fi
+
+  clean:
+    desc: Remove generated outputs while preserving dependency state
+    cmds:
+      - rm -rf .coverage .nyc_output coverage output playwright-report test-results
+
+  purge:
+    desc: Remove generated outputs and setup artifacts
+    cmds:
+      - task: clean
+      - rm -rf node_modules

@@ -1,0 +1,37 @@
+wit_path := "../../common/wit/tasks.wit"
+world_name := "task-component"
+output_wasm := "task-component.wasm"
+
+# List available commands
+default:
+    @just --list
+
+# Install dependencies
+setup:
+    npm ci
+
+# Build the WASM component and transpile for testing
+build:
+    if [ -n "${JCO_FHS:-}" ]; then "$JCO_FHS" -c 'npx jco componentize src/app.js --wit {{wit_path}} -n {{world_name}} -d all --enable clocks --enable random --enable stdio -o {{output_wasm}}'; else npx jco componentize src/app.js --wit {{wit_path}} -n {{world_name}} -d all --enable clocks --enable random --enable stdio -o {{output_wasm}}; fi
+    if [ -n "${JCO_FHS:-}" ]; then "$JCO_FHS" -c 'npx jco transpile {{output_wasm}} -o transpiled/'; else npx jco transpile {{output_wasm}} -o transpiled/; fi
+
+# Run tests (builds first)
+test: build
+    node --test tests/*.test.js
+
+# Run tests with coverage (builds first, 100% threshold)
+coverage: build
+    node --test --experimental-test-coverage \
+      --test-coverage-include='src/**' \
+      --test-coverage-lines=100 \
+      --test-coverage-branches=100 \
+      --test-coverage-functions=100 \
+      tests/*.test.js
+
+# Remove generated outputs while preserving dependency state
+clean:
+    rm -rf .coverage .nyc_output coverage output test-results transpiled task-component.wasm
+
+# Remove generated outputs and setup artifacts
+purge: clean
+    rm -rf node_modules

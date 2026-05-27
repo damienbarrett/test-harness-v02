@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "count-tasks",
+  "description": "Returns the count of tasks",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "tasks": {
+        "type": "array",
+        "items": { "$ref": "../../entities/task-schema.json" }
+      }
+    },
+    "required": ["tasks"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "integer",
+    "description": "The number of tasks"
+  }
+}

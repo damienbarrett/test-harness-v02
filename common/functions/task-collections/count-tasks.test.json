@@ -1,0 +1,20 @@
+{
+  "function": "count-tasks",
+  "tests": [
+    {
+      "description": "counts a list of tasks",
+      "input": { "tasks": [{ "name": "Task 1" }, { "name": "Task 2" }] },
+      "expected": 2
+    },
+    {
+      "description": "returns zero for empty list",
+      "input": { "tasks": [] },
+      "expected": 0
+    },
+    {
+      "description": "counts a single task",
+      "input": { "tasks": [{ "name": "Task 1" }] },
+      "expected": 1
+    }
+  ]
+}

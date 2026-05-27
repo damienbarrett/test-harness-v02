@@ -1,16 +1,30 @@
 # Getting started
 
-Clone the project with all submodules:
+Clone the project:
 
 ```bash
-git clone --recurse-submodules https://github.com/damienbarrett/test-harness-v02
+git clone https://github.com/damienbarrett/test-harness-v02
 ```
 
-If already cloned without submodules:
+This is a monorepo. `common/`, `python/`, `javascript/`, `rust/`, and
+`test-harness/` are normal tracked directories.
+
+## Sparse worktrees
+
+Use sparse worktrees for agent sessions that should only see part of the
+monorepo:
 
 ```bash
-git submodule update --init
+bin/dx-worktree create rust-bindgen rust
+cd .worktrees/rust-bindgen
 ```
+
+Every sparse worktree includes root-level files, `bin/`, and `common/`.
+Additional command arguments select the workstream-specific directories.
+
+Sparse-checkout only controls which files are present in that worktree. It does
+not prevent a process from leaving the worktree if the surrounding execution
+harness allows it. See `docs/worktrees.md` for details.
 
 ## Lifecycle
 

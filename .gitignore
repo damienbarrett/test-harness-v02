@@ -6,6 +6,7 @@
 
 # Local tool caches and session artifacts
 .harness/
+.worktrees/
 .cache/
 .claude/settings.local.json
 .container-build-context*/

@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'USAGE'
+Usage:
+  bin/dx-worktree create <task-name> [path ...]
+  bin/dx-worktree destroy <task-name>
+  bin/dx-worktree list
+
+Creates sparse worktrees under .worktrees/<task-name> on branch agent/<task-name>.
+Every created worktree includes common/, bin/, and root-level files; additional
+paths are interpreted as cone-mode sparse-checkout directories.
+
+Environment:
+  DX_WORKTREE_BASE           Base ref for new worktrees (default: main)
+  DX_WORKTREE_BRANCH_PREFIX  Branch prefix (default: agent)
+USAGE
+}
+
+die() {
+  echo "dx-worktree: $*" >&2
+  exit 1
+}
+
+repo_root() {
+  git rev-parse --show-toplevel 2>/dev/null || die "not inside a git repository"
+}
+
+validate_task_name() {
+  local task_name=$1
+
+  if [[ ! $task_name =~ ^[A-Za-z0-9._-]+$ ]]; then
+    die "task name must contain only letters, numbers, '.', '_', and '-'"
+  fi
+  if [[ $task_name == .* ]]; then
+    die "task name must not start with '.'"
+  fi
+}
+
+normalize_sparse_path() {
+  local raw=$1
+  local path=${raw%/}
+
+  [[ -n $path ]] || die "empty sparse path"
+  [[ $path != "." ]] || die "sparse path must name a directory, not '.'"
+  [[ $path != /* ]] || die "sparse path must be relative: $raw"
+  [[ $path != *..* ]] || die "sparse path must not contain '..': $raw"
+  [[ $path != .git* && $path != */.git* ]] || die "sparse path must not target git metadata: $raw"
+  [[ -e $path ]] || die "sparse path does not exist: $raw"
+
+  if [[ -f $path ]]; then
+    if [[ $path == */* ]]; then
+      die "cone-mode sparse checkout expects directories, got file: $raw"
+    fi
+    return 1
+  fi
+
+  printf '%s\n' "$path"
+}
+
+append_unique() {
+  local value=$1
+  local existing
+
+  for existing in "${sparse_paths[@]}"; do
+    [[ $existing != "$value" ]] || return 0
+  done
+  sparse_paths+=("$value")
+}
+
+create_worktree() {
+  local task_name=$1
+  shift || true
+
+  validate_task_name "$task_name"
+
+  local base_ref=${DX_WORKTREE_BASE:-main}
+  local branch_prefix=${DX_WORKTREE_BRANCH_PREFIX:-agent}
+  local branch_name="${branch_prefix}/${task_name}"
+  local worktree_path=".worktrees/${task_name}"
+  local sparse_path
+  local raw_path
+  sparse_paths=()
+
+  append_unique common
+  append_unique bin
+
+  for raw_path in "$@"; do
+    if sparse_path=$(normalize_sparse_path "$raw_path"); then
+      append_unique "$sparse_path"
+    fi
+  done
+
+  mkdir -p .worktrees
+  git worktree add -b "$branch_name" "$worktree_path" "$base_ref"
+
+  (
+    cd "$worktree_path"
+    git sparse-checkout init --cone
+    git sparse-checkout set "${sparse_paths[@]}"
+  )
+
+  printf 'Created %s on branch %s with sparse paths: %s\n' \
+    "$worktree_path" "$branch_name" "${sparse_paths[*]}"
+}
+
+destroy_worktree() {
+  local task_name=$1
+
+  validate_task_name "$task_name"
+
+  local branch_prefix=${DX_WORKTREE_BRANCH_PREFIX:-agent}
+  local branch_name="${branch_prefix}/${task_name}"
+  local worktree_path=".worktrees/${task_name}"
+
+  git worktree remove "$worktree_path"
+  if git show-ref --verify --quiet "refs/heads/${branch_name}"; then
+    git branch -D "$branch_name"
+  fi
+}
+
+main() {
+  local command=${1:-}
+  local root
+
+  [[ -n $command ]] || {
+    usage
+    exit 2
+  }
+
+  root=$(repo_root)
+  cd "$root"
+
+  case "$command" in
+    create)
+      shift
+      [[ $# -ge 1 ]] || die "create requires <task-name>"
+      create_worktree "$@"
+      ;;
+    destroy)
+      shift
+      [[ $# -eq 1 ]] || die "destroy requires exactly <task-name>"
+      destroy_worktree "$1"
+      ;;
+    list)
+      shift
+      [[ $# -eq 0 ]] || die "list does not take arguments"
+      git worktree list
+      ;;
+    -h|--help|help)
+      usage
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+}
+
+declare -a sparse_paths
+main "$@"

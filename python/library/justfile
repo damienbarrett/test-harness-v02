@@ -1,26 +1,23 @@
-export UV_CACHE_DIR := env_var_or_default('UV_CACHE_DIR', '.cache/uv')
-
 # List available commands
 default:
     @just --list
 
 # Install dependencies
 setup:
-    uv sync --locked --extra test
+    ./lifecycle.sh setup
 
 # Run tests
 test:
-    uv run --locked --extra test pytest tests/ -v
+    ./lifecycle.sh test
 
 # Run tests with coverage
 coverage:
-    uv run --locked --extra test pytest tests/ --cov --cov-report=term-missing
+    ./lifecycle.sh coverage
 
 # Remove generated outputs while preserving dependency state
 clean:
-    rm -rf __pycache__ .pytest_cache .coverage htmlcov output tests/__pycache__ src/tasks/__pycache__
-    find . -name '*.egg-info' -exec rm -rf {} + 2>/dev/null || true
+    ./lifecycle.sh clean
 
 # Remove generated outputs and setup artifacts
 purge: clean
-    rm -rf .venv
+    ./lifecycle.sh purge

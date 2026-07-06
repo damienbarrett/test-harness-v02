@@ -4,20 +4,19 @@ default:
 
 # Install dependencies
 setup:
-    cargo fetch --locked
+    ./lifecycle.sh setup
 
 # Run tests
 test:
-    cargo test --locked --offline --tests
+    ./lifecycle.sh test
 
 # Run tests with coverage (100% threshold)
 coverage:
-    cargo llvm-cov clean --workspace
-    cargo llvm-cov --locked --offline --tests --fail-under-lines 100 --fail-under-functions 100 --fail-under-regions 100
+    ./lifecycle.sh coverage
 
 # Remove generated outputs while preserving dependency state
 clean:
-    cargo clean
+    ./lifecycle.sh clean
 
 # Remove generated outputs and setup artifacts
 purge: clean

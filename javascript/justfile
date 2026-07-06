@@ -16,50 +16,52 @@ coverage: library-coverage component-coverage
 
 # Remove generated outputs while preserving dependency state
 clean: library-clean component-clean
+    ./lifecycle.sh clean
 
 # Remove generated outputs and setup artifacts
 purge: library-purge component-purge
+    ./lifecycle.sh purge
 
 # Install library dependencies
 library-setup:
-    just library/setup
+    ./lifecycle.sh library-setup
 
 # Install component dependencies
 component-setup:
-    just component/setup
+    ./lifecycle.sh component-setup
 
 # Build the component WASM artifact
 component-build:
-    just component/build
+    ./lifecycle.sh component-build
 
 # Run library tests
 library-test:
-    just library/test
+    ./lifecycle.sh library-test
 
 # Run component tests
 component-test:
-    just component/test
+    ./lifecycle.sh component-test
 
 # Run library tests with coverage
 library-coverage:
-    just library/coverage
+    ./lifecycle.sh library-coverage
 
 # Run component tests with coverage
 component-coverage:
-    just component/coverage
+    ./lifecycle.sh component-coverage
 
 # Clean library build artifacts
 library-clean:
-    just library/clean
+    ./lifecycle.sh library-clean
 
 # Clean component build artifacts
 component-clean:
-    just component/clean
+    ./lifecycle.sh component-clean
 
 # Purge library setup artifacts
 library-purge:
-    just library/purge
+    ./lifecycle.sh library-purge
 
 # Purge component setup artifacts
 component-purge:
-    just component/purge
+    ./lifecycle.sh component-purge

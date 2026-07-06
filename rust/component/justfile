@@ -4,29 +4,23 @@ default:
 
 # Install dependencies
 setup:
-    cargo fetch --locked
+    ./lifecycle.sh setup
 
 # Build the WASM component
 build:
-    cargo component build --release --locked --offline
-    cp "${CARGO_TARGET_DIR:-target}/wasm32-wasip1/release/task_component.wasm" task-component.wasm
+    ./lifecycle.sh build
 
 # Run tests (builds first)
 test: build
-    cargo test --locked --offline --tests
+    ./lifecycle.sh test
 
 # Run tests with coverage (100% threshold)
 coverage:
-    cargo clean
-    cargo component build --release --locked --offline
-    cp "${CARGO_TARGET_DIR:-target}/wasm32-wasip1/release/task_component.wasm" task-component.wasm
-    cargo llvm-cov clean --workspace
-    cargo llvm-cov --locked --offline --tests --fail-under-lines 100 --fail-under-functions 100 --fail-under-regions 100
+    ./lifecycle.sh coverage
 
 # Remove generated outputs while preserving dependency state
 clean:
-    cargo clean
-    rm -f task-component.wasm
+    ./lifecycle.sh clean
 
 # Remove generated outputs and setup artifacts
 purge: clean

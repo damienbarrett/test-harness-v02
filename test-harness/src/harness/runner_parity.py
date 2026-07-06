@@ -3,10 +3,16 @@
 For each directory containing both files, verifies (and fails on):
   1. The set of logical recipe names matches.
   2. The dependency set per recipe matches.
+  3. The (normalised) command body for each recipe matches.
 
-Command-body content differences are reported as warnings only. The two DSLs
-have legitimately different shell-script forms, so byte-equivalence is not a
-useful check. Use the warnings to spot-check intent.
+Since Phase 6 of docs/refactoring-plan.md, every lifecycle recipe body is a
+thin one-line call into that directory's canonical `./lifecycle.sh <verb>`
+script, so Task and Just command bodies are expected to be identical after
+normalisation. The ONLY tolerated syntactic difference is how each DSL spells
+"the rest of the CLI arguments" passed through to a recipe: Taskfile's
+`{{.CLI_ARGS}}` versus justfile's variadic-parameter reference (conventionally
+named `{{command}}` or `{{args}}` in this repo). `normalize_command` folds all
+of these spellings to one canonical `{{ARGS}}` token before comparison.
 
 Naming normalisation: Taskfile allows ":" in task names; justfile does not.
 This script treats "container:build" (Taskfile) and "container-build"
@@ -16,8 +22,8 @@ Aggregator normalisation: Taskfile entries of the form "cmds: [{task: X}]"
 are treated as dependencies for comparison, since that is what they are
 semantically and what justfile expresses with "recipe: X".
 
-Exit code 0 = all parity (warnings allowed). Non-zero = missing recipes or
-divergent deps.
+Exit code 0 = all parity. Non-zero = missing recipes, divergent deps, or
+divergent command bodies.
 """
 
 from __future__ import annotations
@@ -42,10 +48,25 @@ SKIP_PARTS = {
 }
 SKIP_TARGETS = {"default"}
 
+# Identifiers used across this repo's Taskfile.yml/justfile pairs to spell
+# "the passthrough CLI arguments" for a recipe. Taskfile only ever uses
+# CLI_ARGS (its built-in variable); justfile recipes declare their own
+# variadic-parameter name, conventionally `command` or `args` here. All of
+# these are one concept and are folded to a single canonical token so that
+# this is the one tolerated spelling difference between the two DSLs.
+ARG_PLACEHOLDER_ALIASES = frozenset({"CLI_ARGS", "ARGS", "COMMAND"})
+
 
 def canonical_name(name: str) -> str:
     """Map both "container:build" and "container-build" to the same key."""
     return name.replace(":", "-")
+
+
+def _canonicalize_template_var(match: re.Match[str]) -> str:
+    name = match.group(1).upper()
+    if name in ARG_PLACEHOLDER_ALIASES:
+        return "{{ARGS}}"
+    return "{{" + name + "}}"
 
 
 def normalize_command(text: str) -> str:
@@ -53,7 +74,7 @@ def normalize_command(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(
         r"\{\{\s*\.?([A-Za-z_][A-Za-z0-9_]*)\s*\}\}",
-        lambda m: "{{" + m.group(1).upper() + "}}",
+        _canonicalize_template_var,
         text,
     )
     text = re.sub(r"\s+#[^\"']*$", "", text).strip()
@@ -153,7 +174,16 @@ def parse_justfile(path: Path) -> dict[str, dict]:
 
 
 def compare(tf: dict, jf: dict) -> tuple[list[str], list[str]]:
-    """Return (failures, warnings) for one directory."""
+    """Return (failures, warnings) for one directory.
+
+    `warnings` is always empty: command-body differences used to be
+    downgraded to warnings, but Phase 6 requires the canonical
+    `./lifecycle.sh <verb>` body to make Taskfile and justfile command bodies
+    identical (after arg-placeholder canonicalisation), so any remaining
+    difference is a real failure. The second return value is kept so this
+    stays a mechanical, non-breaking extension point for any future
+    genuinely-cosmetic (non-failing) distinction.
+    """
     failures: list[str] = []
     warnings: list[str] = []
     only_task = sorted(set(tf) - set(jf))
@@ -167,9 +197,10 @@ def compare(tf: dict, jf: dict) -> tuple[list[str], list[str]]:
         if t["deps"] != j["deps"]:
             failures.append(f"  {name}: deps differ - Taskfile {t['deps']} vs justfile {j['deps']}")
         if t["cmds"] != j["cmds"]:
-            warnings.append(
-                f"  {name}: command bodies differ "
-                f"({len(t['cmds'])} vs {len(j['cmds'])} normalised commands)"
+            failures.append(
+                f"  {name}: command bodies differ\n"
+                f"    Taskfile.yml: {t['cmds']!r}\n"
+                f"    justfile:     {j['cmds']!r}"
             )
     return failures, warnings
 
@@ -178,7 +209,6 @@ def main(root: Path | None = None) -> int:
     root = ROOT if root is None else root
 
     failures = 0
-    warnings = 0
     pairs_checked = 0
     for taskfile in sorted(root.rglob("Taskfile.yml")):
         if any(part in SKIP_PARTS for part in taskfile.parts):
@@ -195,23 +225,16 @@ def main(root: Path | None = None) -> int:
             print(f"FAIL {rel}/: parse error: {exc}", file=sys.stderr)
             failures += 1
             continue
-        f_lines, w_lines = compare(tf, jf)
+        f_lines, _w_lines = compare(tf, jf)
         if f_lines:
             print(f"FAIL {rel}/")
             for line in f_lines:
                 print(line)
             failures += 1
-        if w_lines:
-            for line in w_lines:
-                print(f"warn {rel}/{line.lstrip()}")
-            warnings += len(w_lines)
 
     print()
     if failures == 0:
-        msg = f"OK: {pairs_checked} Taskfile.yml/justfile pair(s) in parity"
-        if warnings:
-            msg += f" ({warnings} command-body warning(s))"
-        print(msg + ".")
+        print(f"OK: {pairs_checked} Taskfile.yml/justfile pair(s) in parity.")
         return 0
     print(f"{failures} location(s) with drift.", file=sys.stderr)
     return 1

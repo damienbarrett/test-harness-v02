@@ -58,6 +58,18 @@ another agent can take over at any point.
   ownership model documented in README. check:runners warnings 71→74 (the
   three new root wrapper recipes differ only in `task`-vs-`just` bodies,
   like every existing wrapper — whole backlog falls to Phase 6).
+- Phase 6 — DONE (commit titled "Make Task and Just behavior genuinely
+  equivalent (Phase 6)"). Canonical per-directory `lifecycle.sh` scripts;
+  identical one-line recipe bodies in both runners; UV_CACHE_DIR defaults
+  live in the scripts; language-root `includes:` aliasing replaced with
+  explicit parity-checkable delegates; root container matrix parameterized
+  behind unchanged aliases; runner_parity command-body differences are now
+  failures (0 warnings); 8 behavioral parity tests execute both real
+  runners against a temp fixture project; purge/setup/test roundtrip from
+  root verified. Internal note: root wrappers and language delegates always
+  shell into `task` inside nix develop regardless of the invoking runner —
+  that is what makes both runners' bodies byte-identical; which runner is
+  used internally is an implementation detail.
 - Untracked files at repo root to leave alone: `parser-plan.md` and the raw
   `www.newworld.co.nz_...html` capture (original of the Phase 4 fixture).
 
@@ -333,24 +345,36 @@ commands.
 
 ## Phase 6 — Make Task and Just behavior genuinely equivalent
 
-- [ ] Decide on one canonical representation for lifecycle behavior:
-  - [ ] Preferred: shared scripts or a declarative lifecycle manifest invoked
-    by both runners.
+- [x] Decide on one canonical representation for lifecycle behavior:
+  - [x] Preferred: shared scripts or a declarative lifecycle manifest invoked
+    by both runners. (Chosen: a self-contained `lifecycle.sh` per directory;
+    every recipe with real command content has the identical one-line body
+    `./lifecycle.sh <verb>` in both runners. Pure aggregators keep each
+    runner's native deps mechanism, preserving Task sources:/generates:
+    incremental hints.)
   - [ ] Alternative: enhance parity parsing until normalized command semantics
-    can be compared reliably.
-- [ ] Preserve public Task and Just recipe names.
-- [ ] Eliminate the current command-body warning backlog.
-- [ ] Add parity tests for:
-  - [ ] Commands.
-  - [ ] Environment variables.
-  - [ ] Working directories.
-  - [ ] Dependencies.
-  - [ ] Cleanup paths.
-  - [ ] Failure propagation.
-- [ ] Resolve Task/Just differences in `.harness` cleanup.
-- [ ] Add tests that execute both runners against a temporary fixture project.
-- [ ] Reduce the root Taskfile and Justfile container-command matrix using
+    can be compared reliably. (Not taken.)
+- [x] Preserve public Task and Just recipe names. (All 87 root names plus
+  every subdirectory name unchanged; `task --dry`/`just --dry-run` bodies
+  byte-identical.)
+- [x] Eliminate the current command-body warning backlog. (74 → 0; body
+  differences are now parity FAILURES. The only tolerated normalization is
+  arg-placeholder syntax, `{{.CLI_ARGS}}` ≡ `{{ARGS}}`.)
+- [x] Add parity tests for:
+  - [x] Commands.
+  - [x] Environment variables.
+  - [x] Working directories.
+  - [x] Dependencies.
+  - [x] Cleanup paths.
+  - [x] Failure propagation.
+- [x] Resolve Task/Just differences in `.harness` cleanup. (The scripts own
+  clean/purge; verified equivalent at runtime in python/.)
+- [x] Add tests that execute both runners against a temporary fixture project.
+  (tests/test_runner_behavioral_parity.py, 8 tests running the real task and
+  just binaries; missing binary is a failure, not a skip.)
+- [x] Reduce the root Taskfile and Justfile container-command matrix using
   parameterized shared scripts while preserving the existing CLI aliases.
+  (Root lifecycle.sh parameterizes the ~40-recipe matrix; all aliases kept.)
 
 Done when a command or environment difference between Task and Just fails CI
 instead of producing a warning.

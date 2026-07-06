@@ -1,33 +1,31 @@
-export UV_CACHE_DIR := env_var_or_default('UV_CACHE_DIR', '.cache/uv')
-
 # List available commands
 default:
     @just --list
 
 # Install test harness dependencies
 setup:
-    uv sync --locked
+    ./lifecycle.sh setup
 
 # Run test harness self-checks
 test:
-    uv run --locked pytest -q
+    ./lifecycle.sh test
 
 # Check Taskfile.yml and justfile parity
 check-runners:
-    ./check-runner-parity.py
+    ./lifecycle.sh check-runners
 
 # Validate common/ contract suites before any component is invoked
 check-contracts:
-    ./check-contracts.py
+    ./lifecycle.sh check-contracts
 
 # Run test harness coverage checks
 coverage:
-    uv run --locked pytest --cov=harness --cov-report=term-missing --cov-fail-under=100
+    ./lifecycle.sh coverage
 
 # Remove generated outputs while preserving dependency state
 clean:
-    rm -rf __pycache__ .pytest_cache .coverage htmlcov output src/harness/__pycache__ tests/__pycache__
+    ./lifecycle.sh clean
 
 # Remove generated outputs and setup artifacts
 purge: clean
-    rm -rf .venv
+    ./lifecycle.sh purge

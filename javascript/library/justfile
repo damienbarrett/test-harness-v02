@@ -4,34 +4,20 @@ default:
 
 # Install npm dependencies (Playwright comes from the Nix flake)
 setup:
-    npm ci
-    mkdir -p node_modules
-    ln -sfT "$PLAYWRIGHT_NPM_PATH" node_modules/playwright
+    ./lifecycle.sh setup
 
 # Run contract tests across Node, Bun, Deno, Chromium, and WebKit
 test:
-    if [ -n "${PLAYWRIGHT_FHS:-}" ]; then \
-      "$PLAYWRIGHT_FHS" -c 'node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js'; \
-    else \
-      node --test --test-timeout=60000 tests/count.test.js tests/browser.test.js; \
-    fi
-    bun test tests/bun.test.js
-    deno test --allow-read tests/deno.test.js
+    ./lifecycle.sh test
 
 # Run runtime matrix plus Node coverage (100% threshold)
 coverage:
-    bun test tests/bun.test.js
-    deno test --allow-read tests/deno.test.js
-    if [ -n "${PLAYWRIGHT_FHS:-}" ]; then \
-      "$PLAYWRIGHT_FHS" -c "node --test --test-timeout=60000 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 tests/count.test.js tests/browser.test.js"; \
-    else \
-      node --test --test-timeout=60000 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 tests/count.test.js tests/browser.test.js; \
-    fi
+    ./lifecycle.sh coverage
 
 # Remove generated outputs while preserving dependency state
 clean:
-    rm -rf .coverage .nyc_output coverage output playwright-report test-results
+    ./lifecycle.sh clean
 
 # Remove generated outputs and setup artifacts
 purge: clean
-    rm -rf node_modules
+    ./lifecycle.sh purge

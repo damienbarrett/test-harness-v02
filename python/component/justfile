@@ -1,16 +1,10 @@
-export UV_CACHE_DIR := env_var_or_default('UV_CACHE_DIR', '.cache/uv')
-
-wit_dir := "../../common/wit"
-output_wasm := "task-component.wasm"
-bindings_dir := "bindings"
-
 # List available commands
 default:
     @just --list
 
 # Install dependencies
 setup:
-    uv sync --locked --extra build --extra test
+    ./lifecycle.sh setup
 
 # Build the WASM component
 #
@@ -19,27 +13,20 @@ setup:
 # mocking them away. The `componentize` step then bundles `src/` + `bindings/`
 # into the WASM artifact.
 build:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    rm -rf {{bindings_dir}}
-    uv run --locked --extra build componentize-py \
-      -d {{wit_dir}} -w task-component bindings {{bindings_dir}}
-    uv run --locked --extra build componentize-py \
-      -d {{wit_dir}} -w task-component componentize \
-      -p src -p {{bindings_dir}} -s -o {{output_wasm}} app
+    ./lifecycle.sh build
 
 # Run tests (builds first)
 test: build
-    uv run --locked --extra test pytest tests/ -v
+    ./lifecycle.sh test
 
 # Run tests with coverage (builds first)
 coverage: build
-    uv run --locked --extra test pytest tests/ --cov --cov-report=term-missing
+    ./lifecycle.sh coverage
 
 # Remove generated outputs while preserving dependency state
 clean:
-    rm -rf __pycache__ .pytest_cache .coverage htmlcov output tests/__pycache__ {{bindings_dir}} {{output_wasm}}
+    ./lifecycle.sh clean
 
 # Remove generated outputs and setup artifacts
 purge: clean
-    rm -rf .venv
+    ./lifecycle.sh purge

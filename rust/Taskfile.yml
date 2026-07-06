@@ -1,12 +1,10 @@
 version: "3"
 
-includes:
-  library:
-    taskfile: library/Taskfile.yml
-    dir: library
-  component:
-    taskfile: component/Taskfile.yml
-    dir: component
+# library:*/component:* delegate tasks are defined explicitly below (not via
+# Task's `includes:` feature) so their command body is a literal,
+# checker-comparable `./lifecycle.sh <verb>` call identical to the justfile
+# wrapper recipes of the same name - `includes:` only ever exposes the child
+# Taskfile's task *names* to this parent, with no comparable body text.
 
 tasks:
   default:
@@ -42,11 +40,35 @@ tasks:
     cmds:
       - task: library:clean
       - task: component:clean
-      - rm -rf "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}/rust"
+      - ./lifecycle.sh clean
 
   purge:
     desc: Remove generated outputs and setup artifacts
     cmds:
       - task: library:purge
       - task: component:purge
-      - rm -rf "{{.TASKFILE_DIR}}/.harness" "${HARNESS_CACHE_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/cache}/rust" "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-{{.TASKFILE_DIR}}/.harness}/outputs}/rust"
+      - ./lifecycle.sh purge
+
+  library:setup:
+    cmds: [./lifecycle.sh library-setup]
+  library:test:
+    cmds: [./lifecycle.sh library-test]
+  library:coverage:
+    cmds: [./lifecycle.sh library-coverage]
+  library:clean:
+    cmds: [./lifecycle.sh library-clean]
+  library:purge:
+    cmds: [./lifecycle.sh library-purge]
+
+  component:setup:
+    cmds: [./lifecycle.sh component-setup]
+  component:build:
+    cmds: [./lifecycle.sh component-build]
+  component:test:
+    cmds: [./lifecycle.sh component-test]
+  component:coverage:
+    cmds: [./lifecycle.sh component-coverage]
+  component:clean:
+    cmds: [./lifecycle.sh component-clean]
+  component:purge:
+    cmds: [./lifecycle.sh component-purge]

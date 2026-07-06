@@ -21,6 +21,24 @@ def test_normalize_command_upper_cases_template_vars_and_strips_comments():
     assert normalize_command('echo {{.Foo}} # a comment') == "echo {{FOO}}"
 
 
+def test_normalize_command_canonicalizes_taskfile_cli_args_placeholder():
+    assert normalize_command("task {{.CLI_ARGS}}") == "task {{ARGS}}"
+
+
+def test_normalize_command_canonicalizes_justfile_command_placeholder():
+    assert normalize_command("task {{command}}") == "task {{ARGS}}"
+
+
+def test_normalize_command_canonicalizes_justfile_args_placeholder():
+    assert normalize_command("task {{args}}") == "task {{ARGS}}"
+
+
+def test_normalize_command_treats_cli_args_and_command_as_identical_tokens():
+    assert normalize_command("./lifecycle.sh container:task {{.CLI_ARGS}}") == normalize_command(
+        "./lifecycle.sh container:task {{command}}"
+    )
+
+
 def test_parse_taskfile_direct_skips_default_and_reads_deps_and_cmds(tmp_path):
     taskfile = tmp_path / "Taskfile.yml"
     taskfile.write_text(
@@ -178,12 +196,31 @@ def test_compare_reports_deps_differ_as_failure():
     assert any("deps differ" in f for f in failures)
 
 
-def test_compare_reports_cmds_differ_as_warning_only():
+def test_compare_reports_cmds_differ_as_failure():
     tf = {"a": {"deps": [], "cmds": ["echo a"]}}
     jf = {"a": {"deps": [], "cmds": ["echo b"]}}
     failures, warnings = compare(tf, jf)
+    assert warnings == []
+    assert any("command bodies differ" in f for f in failures)
+
+
+def test_compare_cmds_differ_failure_shows_both_bodies():
+    tf = {"a": {"deps": [], "cmds": ["echo a"]}}
+    jf = {"a": {"deps": [], "cmds": ["echo b"]}}
+    failures, _warnings = compare(tf, jf)
+    joined = "\n".join(failures)
+    assert "echo a" in joined
+    assert "echo b" in joined
+
+
+def test_compare_cmds_match_after_arg_placeholder_canonicalization():
+    tf_cmd = normalize_command("./lifecycle.sh container:task {{.CLI_ARGS}}")
+    jf_cmd = normalize_command("./lifecycle.sh container:task {{command}}")
+    tf = {"a": {"deps": [], "cmds": [tf_cmd]}}
+    jf = {"a": {"deps": [], "cmds": [jf_cmd]}}
+    failures, warnings = compare(tf, jf)
     assert failures == []
-    assert any("command bodies differ" in w for w in warnings)
+    assert warnings == []
 
 
 def _write_pair(tmp_path, taskfile_text: str, justfile_text: str) -> None:
@@ -201,17 +238,30 @@ def test_main_reports_ok_for_matching_pair(tmp_path, capsys):
     assert "OK: 1 Taskfile.yml/justfile pair(s) in parity." in capsys.readouterr().out
 
 
-def test_main_reports_ok_with_warnings_when_only_cmds_differ(tmp_path, capsys):
+def test_main_fails_when_only_cmds_differ(tmp_path, capsys):
     _write_pair(
         tmp_path,
         'version: "3"\ntasks:\n  test:\n    cmds:\n      - echo hi\n',
         "test:\n    echo different\n",
     )
     exit_code = main(tmp_path)
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "FAIL ./" in captured.out
+    assert "command bodies differ" in captured.out
+    assert "location(s) with drift" in captured.err
+
+
+def test_main_reports_ok_with_no_warnings_message_when_all_match(tmp_path, capsys):
+    _write_pair(
+        tmp_path,
+        'version: "3"\ntasks:\n  test:\n    cmds:\n      - echo hi\n',
+        "test:\n    echo hi\n",
+    )
+    assert main(tmp_path) == 0
     out = capsys.readouterr().out
-    assert exit_code == 0
-    assert "warn ./test: command bodies differ" in out
-    assert "command-body warning" in out
+    assert "OK: 1 Taskfile.yml/justfile pair(s) in parity." in out
+    assert "warning" not in out
 
 
 def test_main_fails_on_missing_recipe(tmp_path, capsys):

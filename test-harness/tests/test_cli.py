@@ -2,7 +2,16 @@ from dataclasses import make_dataclass
 
 from harness import cli
 
-from .conftest import write_component, write_suite, write_wit_file, write_world
+from .conftest import (
+    write_component,
+    write_function_schema,
+    write_suite,
+    write_suite_schema,
+    write_task_entity_schema,
+    write_valid_contract,
+    write_wit_file,
+    write_world,
+)
 
 
 def test_main_fails_when_no_worlds_found(tmp_path, capsys):
@@ -43,11 +52,7 @@ def test_main_fails_when_duplicate_world_names_are_discovered(tmp_path, capsys):
 
 
 def test_main_fails_per_case_when_component_artifact_missing(tmp_path, capsys):
-    write_world(tmp_path, "task-component")
-    write_suite(
-        tmp_path, "task-collections", "count-tasks",
-        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
-    )
+    write_valid_contract(tmp_path)
     (tmp_path / "python" / "component").mkdir(parents=True)
 
     exit_code = cli.main(tmp_path)
@@ -59,11 +64,7 @@ def test_main_fails_per_case_when_component_artifact_missing(tmp_path, capsys):
 
 
 def test_main_reports_instantiation_failure(tmp_path, monkeypatch, capsys):
-    write_world(tmp_path, "task-component")
-    write_suite(
-        tmp_path, "task-collections", "count-tasks",
-        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
-    )
+    write_valid_contract(tmp_path)
     write_component(tmp_path, "python", "task-component")
 
     def boom(engine, wasm_path):
@@ -79,11 +80,7 @@ def test_main_reports_instantiation_failure(tmp_path, monkeypatch, capsys):
 
 
 def test_main_reports_invocation_failure(tmp_path, monkeypatch, capsys):
-    write_world(tmp_path, "task-component")
-    write_suite(
-        tmp_path, "task-collections", "count-tasks",
-        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
-    )
+    write_valid_contract(tmp_path)
     write_component(tmp_path, "python", "task-component")
 
     monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
@@ -101,11 +98,7 @@ def test_main_reports_invocation_failure(tmp_path, monkeypatch, capsys):
 
 
 def test_main_passes_when_actual_matches_expected(tmp_path, monkeypatch, capsys):
-    write_world(tmp_path, "task-component")
-    write_suite(
-        tmp_path, "task-collections", "count-tasks",
-        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
-    )
+    write_valid_contract(tmp_path)
     write_component(tmp_path, "python", "task-component")
 
     monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
@@ -120,11 +113,7 @@ def test_main_passes_when_actual_matches_expected(tmp_path, monkeypatch, capsys)
 
 
 def test_main_reports_mismatch_between_actual_and_expected(tmp_path, monkeypatch, capsys):
-    write_world(tmp_path, "task-component")
-    write_suite(
-        tmp_path, "task-collections", "count-tasks",
-        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
-    )
+    write_valid_contract(tmp_path)
     write_component(tmp_path, "python", "task-component")
 
     monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
@@ -142,8 +131,30 @@ def test_main_structured_return_value_normalized_before_comparison(tmp_path, mon
     """A component return value structurally equivalent to ``expected`` but
     differently typed (e.g. a WIT record surfaced as a dataclass instance)
     is normalized to a plain dict before comparison, so it counts as a
-    match (docs/refactoring-plan.md Phase 2)."""
-    write_world(tmp_path, "task-component")
+    match (docs/refactoring-plan.md Phase 2). The WIT function returns a
+    record here (rather than the real contract's `u32`) specifically so
+    Phase 3's numeric-conformance check does not apply to this fixture."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface task-collections {\n"
+        "    record task {\n        name: string,\n    }\n"
+        "    count-tasks: func(tasks: list<task>) -> task;\n"
+        "}\n\n"
+        "world task-component {\n  export task-collections;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    write_task_entity_schema(tmp_path)
+    write_function_schema(
+        tmp_path, "task-collections", "count-tasks",
+        returns={
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+            "additionalProperties": False,
+        },
+    )
     write_suite(
         tmp_path, "task-collections", "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": {"name": "Task 1"}}],
@@ -178,6 +189,9 @@ def test_main_runs_suite_only_against_worlds_that_export_its_interface(tmp_path,
         "world world-a {\n  export task-collections;\n}\n\n"
         "world world-b {\n  export other-iface;\n}\n",
     )
+    write_suite_schema(tmp_path)
+    write_task_entity_schema(tmp_path)
+    write_function_schema(tmp_path, "task-collections", "count-tasks")
     write_suite(
         tmp_path, "task-collections", "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
@@ -200,10 +214,13 @@ def test_main_runs_suite_only_against_worlds_that_export_its_interface(tmp_path,
 
 def test_main_hard_fails_when_no_world_exports_the_suites_interface(tmp_path, capsys):
     """A suite whose interface is exported by no discovered world is a hard
-    failure -- never a silent skip (docs/refactoring-plan.md Phase 2)."""
+    failure, caught by contract validation before any component is
+    touched (docs/refactoring-plan.md Phase 2 and Phase 3) -- never a
+    silent skip."""
     write_wit_file(
         tmp_path, "tasks.wit", "package common:tasks;\n\nworld w {\n  export other-iface;\n}\n"
     )
+    write_suite_schema(tmp_path)
     write_suite(
         tmp_path, "task-collections", "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
@@ -211,15 +228,15 @@ def test_main_hard_fails_when_no_world_exports_the_suites_interface(tmp_path, ca
     write_component(tmp_path, "python", "w")
 
     exit_code = cli.main(tmp_path)
-    out = capsys.readouterr().out
+    err = capsys.readouterr().err
 
     assert exit_code == 1
-    assert "interface 'task-collections' is not exported by any discovered world" in out
-    assert "1/1 test(s) failed." in out
+    assert "interface 'task-collections' is not exported by any discovered world" in err
 
 
 def test_main_hard_fails_when_suite_function_not_declared_in_wit_interface(tmp_path, capsys):
     write_world(tmp_path, "task-component")  # declares task-collections.count-tasks only
+    write_suite_schema(tmp_path)
     write_suite(
         tmp_path, "task-collections", "not-a-real-function",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
@@ -227,17 +244,23 @@ def test_main_hard_fails_when_suite_function_not_declared_in_wit_interface(tmp_p
     write_component(tmp_path, "python", "task-component")
 
     exit_code = cli.main(tmp_path)
-    out = capsys.readouterr().out
+    err = capsys.readouterr().err
 
     assert exit_code == 1
     assert (
         "function 'not-a-real-function' is not declared on interface "
-        "'task-collections'" in out
+        "'task-collections' in the WIT contract" in err
     )
-    assert "1/1 test(s) failed." in out
 
 
-def test_main_world_exporting_only_one_of_two_interfaces(tmp_path, monkeypatch, capsys):
+def test_main_hard_fails_before_running_any_suite_when_one_interface_is_unexported(
+    tmp_path, monkeypatch, capsys
+):
+    """Phase 3 changes this from a partial run (the old per-suite loop
+    would still execute the valid ``iface-a`` suite while failing
+    ``iface-b``) to an all-or-nothing pre-flight gate: ANY contract-invalid
+    suite blocks the entire run, including suites that are otherwise
+    perfectly valid, and no component is ever instantiated."""
     write_wit_file(
         tmp_path,
         "tasks.wit",
@@ -245,19 +268,56 @@ def test_main_world_exporting_only_one_of_two_interfaces(tmp_path, monkeypatch, 
         "interface iface-a {\n  fn-a: func(x: string) -> string;\n}\n\n"
         "world w {\n  export iface-a;\n}\n",
     )
+    write_suite_schema(tmp_path)
+    write_function_schema(
+        tmp_path, "iface-a", "fn-a",
+        parameters={
+            "type": "object",
+            "properties": {"x": {"type": "string"}},
+            "required": ["x"],
+            "additionalProperties": False,
+        },
+        returns={"type": "string"},
+    )
     write_suite(tmp_path, "iface-a", "fn-a", [{"description": "a", "input": {"x": "hi"}, "expected": "hi"}])
     write_suite(tmp_path, "iface-b", "fn-b", [{"description": "b", "input": {"y": 1}, "expected": 1}])
     write_component(tmp_path, "python", "w")
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
-    monkeypatch.setattr(cli, "call_function", lambda store, instance, iface, fn, args: args[0])
+    def boom(engine, wasm_path):
+        raise AssertionError("no component may be instantiated when any contract is invalid")
+
+    monkeypatch.setattr(cli, "instantiate_component", boom)
 
     exit_code = cli.main(tmp_path)
-    out = capsys.readouterr().out
+    result = capsys.readouterr()
 
     assert exit_code == 1
-    assert "world=w  interface=iface-a  function=fn-a" in out
-    assert "interface 'iface-b' is not exported by any discovered world" in out
+    assert "interface 'iface-b' is not exported by any discovered world" in result.err
+    assert "fn-a" not in result.out
+
+
+def test_main_never_instantiates_a_component_when_contracts_are_invalid(tmp_path, monkeypatch, capsys):
+    """End-to-end proof of the Phase 3 "Done when" criterion: an invalid
+    contract fails before any component is invoked."""
+    write_world(tmp_path, "task-component")
+    write_suite_schema(tmp_path)
+    write_suite(
+        tmp_path, "task-collections", "not-a-real-function",
+        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
+    )
+    write_component(tmp_path, "python", "task-component")
+
+    def boom(engine, wasm_path):
+        raise AssertionError("instantiate_component must not be called when contracts are invalid")
+
+    monkeypatch.setattr(cli, "instantiate_component", boom)
+
+    exit_code = cli.main(tmp_path)
+    err = capsys.readouterr().err
+
+    assert exit_code == 1
+    assert "FAIL: contract validation failed; no component was invoked:" in err
+    assert "function 'not-a-real-function' is not declared" in err
 
 
 def test_main_uses_wit_declared_param_order_not_json_insertion_order(tmp_path, monkeypatch, capsys):
@@ -272,6 +332,17 @@ def test_main_uses_wit_declared_param_order_not_json_insertion_order(tmp_path, m
         "  combine: func(b: string, a: string) -> string;\n"
         "}\n\n"
         "world w {\n  export ordering;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    write_function_schema(
+        tmp_path, "ordering", "combine",
+        parameters={
+            "type": "object",
+            "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
+            "required": ["a", "b"],
+            "additionalProperties": False,
+        },
+        returns={"type": "string"},
     )
     # JSON insertion order is a, b -- the reverse of the declared params.
     write_suite(
@@ -310,6 +381,27 @@ def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(tmp_path, m
         "pkg-b.wit",
         "package common:b;\n\ninterface iface-b {\n  fn-b: func(y: string) -> string;\n}\n\n"
         "world world-b {\n  export iface-b;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    write_function_schema(
+        tmp_path, "iface-a", "fn-a",
+        parameters={
+            "type": "object",
+            "properties": {"x": {"type": "string"}},
+            "required": ["x"],
+            "additionalProperties": False,
+        },
+        returns={"type": "string"},
+    )
+    write_function_schema(
+        tmp_path, "iface-b", "fn-b",
+        parameters={
+            "type": "object",
+            "properties": {"y": {"type": "string"}},
+            "required": ["y"],
+            "additionalProperties": False,
+        },
+        returns={"type": "string"},
     )
     write_suite(tmp_path, "iface-a", "fn-a", [{"description": "d-a", "input": {"x": "A"}, "expected": "A"}])
     write_suite(tmp_path, "iface-b", "fn-b", [{"description": "d-b", "input": {"y": "B"}, "expected": "B"}])

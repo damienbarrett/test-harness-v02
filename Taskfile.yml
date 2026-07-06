@@ -112,6 +112,11 @@ tasks:
     cmds:
       - cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./check-runner-parity.py'
 
+  contracts:check:
+    desc: Validate common/ contract suites before any component is invoked
+    cmds:
+      - cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./check-contracts.py'
+
   image:bootstrap:
     desc: Install container/image tools in the current checked-out repo environment
     cmds:

@@ -31,6 +31,10 @@ wasm-test:
 check-runners:
     cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./check-runner-parity.py'
 
+# Validate common/ contract suites before any component is invoked
+contracts-check:
+    cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./check-contracts.py'
+
 # Install container/image tools in the current checked-out repo environment
 image-bootstrap:
     ./container/aarch64-darwin-apple-container-codex-universal/bootstrap-container-tools.sh

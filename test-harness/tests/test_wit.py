@@ -115,7 +115,7 @@ def test_line_and_doc_comments_are_ignored(tmp_path):
     world = worlds[0]
     assert world.exports == ("task-collections",)
     assert world.function_signature("task-collections", "count-tasks") == WitFunction(
-        name="count-tasks", params=("tasks",)
+        name="count-tasks", params=("tasks",), param_types=("string",), returns="u32"
     )
 
 
@@ -135,7 +135,9 @@ def test_interface_function_params_parsed_in_declared_order(tmp_path):
     worlds = discover_worlds(tmp_path)
     world = worlds[0]
     fn = world.function_signature("task-collections", "count-tasks")
-    assert fn == WitFunction(name="count-tasks", params=("tasks",))
+    assert fn == WitFunction(
+        name="count-tasks", params=("tasks",), param_types=("list<task>",), returns="u32"
+    )
 
 
 def test_function_param_order_matches_declaration_not_alphabetical(tmp_path):
@@ -235,6 +237,76 @@ def test_function_with_no_return_type_is_parsed(tmp_path):
     worlds = discover_worlds(tmp_path)
     fn = worlds[0].function_signature("things", "log")
     assert fn.params == ("message",)
+    assert fn.returns is None
+
+
+def test_function_param_types_captured_alongside_names(tmp_path):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface things {\n"
+        "  combine: func(a: string, b: u32) -> string;\n"
+        "}\n\n"
+        "world w {\n  export things;\n}\n",
+    )
+    fn = discover_worlds(tmp_path)[0].function_signature("things", "combine")
+    assert fn.params == ("a", "b")
+    assert fn.param_types == ("string", "u32")
+
+
+def test_function_return_type_text_is_captured_verbatim(tmp_path):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface things {\n"
+        "  get-count: func() -> u64;\n"
+        "}\n\n"
+        "world w {\n  export things;\n}\n",
+    )
+    fn = discover_worlds(tmp_path)[0].function_signature("things", "get-count")
+    assert fn.returns == "u64"
+
+
+def test_record_fields_parsed_in_declared_order_with_type_text(tmp_path):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface things {\n"
+        "  record widget {\n"
+        "    id: u32,\n"
+        "    label: string,\n"
+        "  }\n\n"
+        "  make: func(w: widget) -> bool;\n"
+        "}\n\n"
+        "world w {\n  export things;\n}\n",
+    )
+    world = discover_worlds(tmp_path)[0]
+    iface = world.interfaces["things"]
+    assert set(iface.records) == {"widget"}
+    record = iface.records["widget"]
+    assert record.field_names == ("id", "label")
+    assert [f.type for f in record.fields] == ["u32", "string"]
+    # The function's declared param type text is captured too, so
+    # `harness.contracts` can discover that `w: widget` reaches `widget`.
+    fn = world.function_signature("things", "make")
+    assert fn.param_types == ("widget",)
+
+
+def test_interface_with_no_records_has_empty_records_mapping(tmp_path):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface things {\n"
+        "  ping: func() -> bool;\n"
+        "}\n\n"
+        "world w {\n  export things;\n}\n",
+    )
+    world = discover_worlds(tmp_path)[0]
+    assert world.interfaces["things"].records == {}
 
 
 def test_interface_with_multiple_functions_captures_each_distinctly(tmp_path):

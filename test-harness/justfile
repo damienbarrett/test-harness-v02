@@ -16,6 +16,10 @@ test:
 check-runners:
     ./check-runner-parity.py
 
+# Validate common/ contract suites before any component is invoked
+check-contracts:
+    ./check-contracts.py
+
 # Run test harness coverage checks
 coverage:
     uv run --locked pytest --cov=harness --cov-report=term-missing --cov-fail-under=100

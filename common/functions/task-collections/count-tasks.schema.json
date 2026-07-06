@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/functions/task-collections/count-tasks.schema.json",
   "name": "count-tasks",
   "description": "Returns the count of tasks",
   "parameters": {
@@ -15,6 +16,8 @@
   },
   "returns": {
     "type": "integer",
-    "description": "The number of tasks"
+    "description": "The number of tasks",
+    "minimum": 0,
+    "maximum": 4294967295
   }
 }

@@ -1,6 +1,9 @@
+// Schema-validation of these same fixtures against their JSON Schema
+// contracts is now owned centrally by test-harness (harness.contracts /
+// check-contracts.py), not duplicated per language -- this module only
+// loads the declarative test data itself for language-level execution
+// tests to run against a real implementation.
 const TEST_DATA_URL = new URL("../../common/functions/task-collections/count-tasks.test.json", import.meta.url);
-const FUNCTION_SCHEMA_URL = new URL("../../common/functions/task-collections/count-tasks.schema.json", import.meta.url);
-const TASK_SCHEMA_URL = new URL("../../common/entities/task-schema.json", import.meta.url);
 
 async function readText(url) {
   if (typeof Deno !== "undefined") {
@@ -16,19 +19,8 @@ async function readJson(url) {
 }
 
 export async function loadTaskContractFixtures() {
-  const [testData, functionSchema, taskSchema] = await Promise.all([
-    readJson(TEST_DATA_URL),
-    readJson(FUNCTION_SCHEMA_URL),
-    readJson(TASK_SCHEMA_URL),
-  ]);
-
-  return { testData, functionSchema, taskSchema };
-}
-
-export function loadParamsSchema(functionSchema, taskSchema) {
-  const params = JSON.parse(JSON.stringify(functionSchema.parameters));
-  params.properties.tasks.items = taskSchema;
-  return params;
+  const testData = await readJson(TEST_DATA_URL);
+  return { testData };
 }
 
 export function formatMismatch(description, actual, expected) {

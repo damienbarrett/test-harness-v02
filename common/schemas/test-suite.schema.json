@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/schemas/test-suite.schema.json",
+  "title": "Test suite",
+  "description": "A declarative *.test.json suite: the WIT function under test plus its declarative test cases. See common/README.md for the directory convention this format participates in.",
+  "type": "object",
+  "properties": {
+    "function": {
+      "type": "string",
+      "description": "The kebab-case WIT function name under test. Must equal the suite file's stem (e.g. count-tasks.test.json declares \"count-tasks\").",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "targets": {
+      "type": "array",
+      "description": "Optional restriction on which execution targets this suite applies to (reserved for Phase 4 file-backed fixtures). An unsupported target is a validation error, never a silent skip.",
+      "items": {
+        "enum": ["native", "component"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "tests": {
+      "type": "array",
+      "description": "The suite's test cases.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A human-readable description of the case, unique within the suite."
+          },
+          "input": {
+            "type": "object",
+            "description": "The function's parameters, keyed by WIT-declared parameter name."
+          },
+          "expected": {
+            "description": "The function's expected return value."
+          }
+        },
+        "required": ["description", "input", "expected"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["function", "tests"],
+  "additionalProperties": false
+}

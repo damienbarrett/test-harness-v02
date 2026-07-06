@@ -8,7 +8,12 @@ information the harness needs from each ``common/wit/*.wit`` file:
 * every world declared in the file, and the interfaces each world exports,
 * every interface declared in the file, and each of its functions'
   parameter names in declared order (the contract-authoritative order used
-  to build positional call arguments -- see ``harness.conversion``).
+  to build positional call arguments -- see ``harness.conversion``), each
+  parameter's declared type text, and the function's declared return type
+  text (used by ``harness.contracts`` for WIT/JSON-Schema conformance
+  checks),
+* every ``record`` type declared inside an interface, and its field names
+  in declared order (also used by ``harness.contracts``).
 
 ``//`` and ``///`` doc comments are stripped before parsing (both share the
 same ``//`` prefix). Whitespace, including newlines inside a multi-line
@@ -26,7 +31,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .models import WitFunction, WitInterface, WitWorld
+from .models import WitFunction, WitInterface, WitRecord, WitRecordField, WitWorld
 
 
 class WitError(Exception):
@@ -139,13 +144,46 @@ def _parse_functions(body: str) -> dict[str, WitFunction]:
             continue  # not a function signature (e.g. a `use` statement)
         name = match.group(1)
         params_str = match.group(2)
-        params = tuple(
-            fragment.split(":", 1)[0].strip()
-            for fragment in _split_top_level(params_str)
-            if fragment.strip()
+        returns_str = match.group(3)
+        param_names: list[str] = []
+        param_types: list[str] = []
+        for fragment in _split_top_level(params_str):
+            frag = fragment.strip()
+            if not frag:
+                continue
+            pname, _, ptype = frag.partition(":")
+            param_names.append(pname.strip())
+            param_types.append(ptype.strip())
+        functions[name] = WitFunction(
+            name=name,
+            params=tuple(param_names),
+            param_types=tuple(param_types),
+            returns=returns_str.strip() if returns_str is not None else None,
         )
-        functions[name] = WitFunction(name=name, params=params)
     return functions
+
+
+def _parse_record_fields(body: str) -> tuple[WitRecordField, ...]:
+    """Parse a ``record { ... }`` block's comma-separated ``name: type``
+    fields, in declared order."""
+    fields: list[WitRecordField] = []
+    for fragment in _split_top_level(body):
+        frag = fragment.strip()
+        if not frag:
+            continue
+        fname, _, ftype = frag.partition(":")
+        fields.append(WitRecordField(name=fname.strip(), type=ftype.strip()))
+    return tuple(fields)
+
+
+def _parse_records(body: str) -> dict[str, WitRecord]:
+    """Find every ``record NAME { ... }`` block declared anywhere in an
+    interface body (brace depth tracked, so this does not confuse a record
+    nested inside another block)."""
+    return {
+        name: WitRecord(name=name, fields=_parse_record_fields(record_body))
+        for name, record_body in _find_blocks(body, "record")
+    }
 
 
 def _parse_wit_file(path: Path) -> list[WitWorld]:
@@ -157,7 +195,11 @@ def _parse_wit_file(path: Path) -> list[WitWorld]:
     namespace, package = pkg_match.group(1), pkg_match.group(2)
 
     interfaces = {
-        name: WitInterface(name=name, functions=_parse_functions(body))
+        name: WitInterface(
+            name=name,
+            functions=_parse_functions(body),
+            records=_parse_records(body),
+        )
         for name, body in _find_blocks(text, "interface")
     }
 

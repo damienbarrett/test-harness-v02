@@ -28,6 +28,11 @@ tasks:
     cmds:
       - ./check-runner-parity.py
 
+  check-contracts:
+    desc: Validate common/ contract suites before any component is invoked
+    cmds:
+      - ./check-contracts.py
+
   coverage:
     desc: Run test harness coverage checks
     cmds:

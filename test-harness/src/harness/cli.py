@@ -19,6 +19,12 @@ Implementations are discovered by scanning for ``*/component/`` directories.
 Any directory matching that pattern is expected to contain a
 ``{world}.wasm`` file for every world defined in the WIT.
 
+After discovery, and before any component is instantiated, every suite is
+run through ``harness.contracts.validate_contracts`` -- a malformed suite,
+an undeclared function, a fixture that does not exist, or a WIT/JSON-Schema
+numeric or record mismatch fails the whole run immediately, rather than
+during (or after) invoking a component (docs/refactoring-plan.md Phase 3).
+
 Exit code 0 = all pass. Non-zero = at least one failure.
 """
 
@@ -29,6 +35,7 @@ from pathlib import Path
 
 from wasmtime import Engine
 
+from .contracts import validate_contracts
 from .conversion import normalize_return, prepare_args
 from .implementations import discover_implementations
 from .invocation import call_function, instantiate_component
@@ -62,6 +69,13 @@ def main(root: Path | None = None) -> int:
         print("FAIL: no implementation directories found", file=sys.stderr)
         return 1
 
+    contract_errors = validate_contracts(root)
+    if contract_errors:
+        print("FAIL: contract validation failed; no component was invoked:", file=sys.stderr)
+        for error in contract_errors:
+            print(f"  {error}", file=sys.stderr)
+        return 1
+
     total = 0
     passed = 0
     failed = 0
@@ -81,33 +95,25 @@ def main(root: Path | None = None) -> int:
 
         print(f"--- {suite_rel}")
 
+        # validate_contracts has already confirmed, for every discovered
+        # suite, that its interface is exported by at least one world and
+        # that the function is declared there -- so neither is re-checked
+        # (and re-reported) here; a violation would already have failed the
+        # run before this loop ever started.
         matching_worlds = [world for world in worlds if world.exports_interface(interface)]
-        if not matching_worlds:
-            available = ", ".join(sorted({world.name for world in worlds})) or "(none)"
-            print(
-                f"    FAIL: interface '{interface}' is not exported by any "
-                f"discovered world (worlds: {available})"
-            )
-            print()
-            failed += len(tests)
-            total += len(tests)
-            continue
+        assert matching_worlds, (
+            f"contract validation should have caught interface '{interface}' "
+            "not being exported by any world"
+        )
 
         for world in matching_worlds:
             signature = world.function_signature(interface, function)
+            assert signature is not None, (
+                f"contract validation should have caught function '{function}' "
+                f"not being declared on interface '{interface}'"
+            )
 
             print(f"    world={world.name}  interface={interface}  function={function}")
-
-            if signature is None:
-                print(
-                    f"    FAIL: function '{function}' is not declared on "
-                    f"interface '{interface}' in the WIT contract for world "
-                    f"'{world.name}'"
-                )
-                print()
-                failed += len(tests)
-                total += len(tests)
-                continue
 
             interface_export = world.interface_export(interface)
 

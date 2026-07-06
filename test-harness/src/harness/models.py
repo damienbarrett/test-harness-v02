@@ -21,10 +21,40 @@ class WitFunction:
     order -- this is the authority for positional argument order when
     calling into a component; JSON object insertion order in a test suite
     is never used for this purpose.
+
+    ``param_types`` holds each parameter's declared type text, aligned by
+    index with ``params`` (e.g. for ``count-tasks: func(tasks: list<task>)``,
+    ``param_types == ("list<task>",)``). ``returns`` is the function's
+    declared return type text verbatim (e.g. ``"u32"``), or ``None`` for a
+    function with no return type. Both are used by ``harness.contracts`` to
+    check WIT/JSON-Schema conformance (numeric bounds and record shape).
     """
 
     name: str
     params: tuple[str, ...] = ()
+    param_types: tuple[str, ...] = ()
+    returns: str | None = None
+
+
+@dataclass(frozen=True)
+class WitRecordField:
+    """A single field inside a WIT ``record { ... }`` declaration."""
+
+    name: str
+    type: str
+
+
+@dataclass(frozen=True)
+class WitRecord:
+    """A ``record { ... }`` type declared inside a WIT interface."""
+
+    name: str
+    fields: tuple[WitRecordField, ...] = ()
+
+    @property
+    def field_names(self) -> tuple[str, ...]:
+        """The record's declared field names, in declared order."""
+        return tuple(f.name for f in self.fields)
 
 
 @dataclass(frozen=True)
@@ -33,6 +63,7 @@ class WitInterface:
 
     name: str
     functions: dict[str, WitFunction] = field(default_factory=dict)
+    records: dict[str, WitRecord] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

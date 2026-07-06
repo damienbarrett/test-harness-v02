@@ -1,0 +1,37 @@
+[project]
+name = "harness"
+version = "0.1.0"
+description = "Unified WASM contract test harness and runner-parity checker"
+requires-python = ">=3.13"
+dependencies = [
+    "wasmtime==43.0.0",
+    "pyyaml",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov>=7.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/harness"]
+
+[tool.coverage.run]
+source = ["harness"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = false
+
+[tool.pytest.ini_options]
+# `harness.models.TestCase` is a domain dataclass, not a pytest test class;
+# none of our test modules define classes, so disable class-based collection
+# entirely to silence the pytest naming-collision warning it would otherwise
+# trigger.
+python_classes = "NoPytestTestClasses"

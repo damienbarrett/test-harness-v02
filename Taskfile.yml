@@ -23,13 +23,22 @@ tasks:
       - task: rust-setup
       - task: test-harness-setup
 
+  build:
+    desc: Build all WASM components
+    cmds:
+      - task: python-build
+      - task: javascript-build
+      - task: rust-build
+
   test:
     desc: Run all tests
     cmds:
+      - task: contracts:check
       - task: python-test
       - task: javascript-test
       - task: rust-test
       - task: test-harness-test
+      - task: wasm:test
 
   coverage:
     desc: Run all tests with coverage
@@ -65,6 +74,13 @@ tasks:
     cmds: [cd rust && nix develop --command task setup]
   test-harness-setup:
     cmds: [cd test-harness && nix develop --command task setup]
+
+  python-build:
+    cmds: [cd python && nix develop --command task build]
+  javascript-build:
+    cmds: [cd javascript && nix develop --command task build]
+  rust-build:
+    cmds: [cd rust && nix develop --command task build]
 
   python-test:
     cmds: [cd python && nix develop --command task test]
@@ -103,8 +119,9 @@ tasks:
     cmds: [cd test-harness && nix develop --command task purge]
 
   wasm:test:
-    desc: Run unified WASM contract tests across all implementations
+    desc: Run unified WASM contract tests across all implementations (builds first)
     cmds:
+      - task: build
       - cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./run-wasm-tests.py'
 
   check:runners:

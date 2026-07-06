@@ -9,8 +9,11 @@ provision:
 # Install all dependencies
 setup: python-setup javascript-setup rust-setup test-harness-setup
 
+# Build all WASM components
+build: python-build javascript-build rust-build
+
 # Run all tests
-test: python-test javascript-test rust-test test-harness-test
+test: contracts-check python-test javascript-test rust-test test-harness-test wasm-test
 
 # Run all tests with coverage
 coverage: python-coverage javascript-coverage rust-coverage test-harness-coverage
@@ -23,8 +26,8 @@ clean: python-clean javascript-clean rust-clean test-harness-clean
 purge: python-purge javascript-purge rust-purge test-harness-purge
     rm -rf .output output
 
-# Run unified WASM contract tests across all implementations
-wasm-test:
+# Run unified WASM contract tests across all implementations (builds first)
+wasm-test: build
     cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./run-wasm-tests.py'
 
 # Check Taskfile.yml and justfile parity
@@ -260,6 +263,18 @@ javascript-setup:
 # Install Rust dependencies
 rust-setup:
     cd rust && nix develop --command just setup
+
+# Build the Python WASM component
+python-build:
+    cd python && nix develop --command just build
+
+# Build the JavaScript WASM component
+javascript-build:
+    cd javascript && nix develop --command just build
+
+# Build the Rust WASM component
+rust-build:
+    cd rust && nix develop --command just build
 
 # Run Python tests
 python-test:

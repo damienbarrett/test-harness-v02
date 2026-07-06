@@ -20,6 +20,11 @@ tasks:
       - task: library:setup
       - task: component:setup
 
+  build:
+    desc: Build the WASM component
+    cmds:
+      - task: component:build
+
   test:
     desc: Run all tests
     cmds:

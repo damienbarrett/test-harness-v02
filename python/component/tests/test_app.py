@@ -8,9 +8,11 @@ test time — replacing an earlier mocked harness that accepted `[object(),
 object()]` and only verified `len()`, which never actually exercised the
 contract.
 
-The complementary `test_wasm_count_tasks.py` runs the compiled `.wasm`
-through wasmtime; this file pins the host-side surface that gets compiled
-into it.
+The central test-harness (`test-harness/`, invoked via root `task wasm:test`)
+owns black-box WASM contract parity for the compiled `.wasm` across all
+languages; this file pins the host-side surface that gets compiled into it,
+so a signature drift is caught here without duplicating the harness's
+wasmtime-based invocation.
 """
 
 import json

@@ -49,6 +49,15 @@ another agent can take over at any point.
   "same case drives native and WASM" demo is deferred until an
   html-parser capability exists (the plan forbids starting the parser
   before items 1–4 are complete).
+- Phase 5 — DONE (commit titled "Clarify build and test responsibilities
+  (Phase 5)"). `build` verb at root and language roots; root
+  `wasm:test`/`wasm-test` depend on `build`; root `test` = contracts:check
+  → language/harness tests → wasm:test; rust+python server-side wasmtime
+  duplicate tests removed with their dependencies (JS one kept — different
+  host: jco-transpiled Node); only harness wasmtime==43.0.0 remains; test
+  ownership model documented in README. check:runners warnings 71→74 (the
+  three new root wrapper recipes differ only in `task`-vs-`just` bodies,
+  like every existing wrapper — whole backlog falls to Phase 6).
 - Untracked files at repo root to leave alone: `parser-plan.md` and the raw
   `www.newworld.co.nz_...html` capture (original of the Phase 4 fixture).
 
@@ -290,24 +299,33 @@ case without exposing filesystem access to the parser.
 
 ## Phase 5 — Clarify build and test responsibilities
 
-- [ ] Add a consistent `build` lifecycle verb at:
-  - [ ] Root (missing today).
-  - [ ] Each language root (missing today: `rust/`, `python/`, `javascript/`).
-  - [ ] Each component (already present in `rust/component`, `python/component`,
+- [x] Add a consistent `build` lifecycle verb at:
+  - [x] Root (missing today).
+  - [x] Each language root (missing today: `rust/`, `python/`, `javascript/`).
+  - [x] Each component (already present in `rust/component`, `python/component`,
     and `javascript/component`; keep these as-is).
-- [ ] Make `wasm:test` either build required components or explicitly depend on
-  `build`.
-- [ ] Define the test ownership model:
-  - [ ] Language tests cover pure implementation logic and thin binding
+- [x] Make `wasm:test` either build required components or explicitly depend on
+  `build`. (Root `wasm:test`/`wasm-test` depend on `build`; verified from a
+  tree with all three .wasm artifacts deleted.)
+- [x] Define the test ownership model:
+  - [x] Language tests cover pure implementation logic and thin binding
     adapters.
-  - [ ] The central harness owns black-box WASM contract parity.
-- [ ] Remove redundant per-language low-level Wasmtime tests only after the
-  central harness provides equivalent coverage.
-- [ ] Remove unnecessary Rust Wasmtime development dependencies if integration
-  testing moves fully to the harness.
-- [ ] Align any remaining Wasmtime versions.
-- [ ] Make root `test` run the contract validator and unified parity test after
-  component builds.
+  - [x] The central harness owns black-box WASM contract parity.
+    (README "Test ownership model" section; in-browser validation stays
+    per-language per constitution §7.)
+- [x] Remove redundant per-language low-level Wasmtime tests only after the
+  central harness provides equivalent coverage. (Removed rust/component and
+  python/component wasmtime tests; KEPT javascript/component
+  wasm-count-tasks.test.js — it runs the jco-transpiled component under
+  Node's native WebAssembly, a host the central harness does not cover.)
+- [x] Remove unnecessary Rust Wasmtime development dependencies if integration
+  testing moves fully to the harness. (wasmtime/wasmtime-wasi dev-deps
+  dropped; 46 crates left Cargo.lock.)
+- [x] Align any remaining Wasmtime versions. (Only the harness's
+  wasmtime==43.0.0 remains anywhere in the repo.)
+- [x] Make root `test` run the contract validator and unified parity test after
+  component builds. (Order: contracts:check, language + harness tests,
+  wasm:test with build dependency.)
 
 Done when `task test` from a clean checkout cannot accidentally omit unified
 contract parity, and `task wasm:test` does not depend on undocumented prior

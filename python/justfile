@@ -5,6 +5,9 @@ default:
 # Install all dependencies
 setup: library-setup component-setup
 
+# Build the WASM component
+build: component-build
+
 # Run all tests
 test: library-test component-test
 

@@ -14,15 +14,64 @@ from typing import Any
 
 
 @dataclass(frozen=True)
-class WitWorld:
-    """A WIT world discovered by name from a ``common/wit/*.wit`` file.
+class WitFunction:
+    """A function signature declared inside a WIT interface.
 
-    Phase 1 preserves current behavior: only the world name is extracted.
-    Namespace, package, and exported-interface information will be added in
-    Phase 2 (see ``docs/refactoring-plan.md``).
+    ``params`` holds the function's declared parameter names in declared
+    order -- this is the authority for positional argument order when
+    calling into a component; JSON object insertion order in a test suite
+    is never used for this purpose.
     """
 
     name: str
+    params: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class WitInterface:
+    """An ``interface { ... }`` block declared inside a WIT package."""
+
+    name: str
+    functions: dict[str, WitFunction] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class WitWorld:
+    """A WIT world discovered from a ``common/wit/*.wit`` file.
+
+    ``exports`` is the tuple of interface names the world's ``export``
+    statements reference (in file order). ``interfaces`` is the full set of
+    interfaces declared in the world's own package, keyed by interface
+    name, giving the world access to its package's function signatures
+    (parameter names, in declared order) for any of those interfaces.
+    """
+
+    namespace: str
+    package: str
+    name: str
+    exports: tuple[str, ...] = ()
+    interfaces: dict[str, WitInterface] = field(default_factory=dict)
+
+    def exports_interface(self, interface: str) -> bool:
+        """Whether this world's ``export`` statements include ``interface``."""
+        return interface in self.exports
+
+    def interface_export(self, interface: str) -> str:
+        """The export string wasmtime expects for invocation.
+
+        Built from the world's own discovered namespace/package rather
+        than any hardcoded constant, e.g. ``common:tasks/task-collections``.
+        """
+        return f"{self.namespace}:{self.package}/{interface}"
+
+    def function_signature(self, interface: str, function: str) -> WitFunction | None:
+        """Look up a function's declared signature on one of this world's
+        package interfaces, or ``None`` if the interface or function is not
+        declared in the WIT contract."""
+        iface = self.interfaces.get(interface)
+        if iface is None:
+            return None
+        return iface.functions.get(function)
 
 
 @dataclass(frozen=True)

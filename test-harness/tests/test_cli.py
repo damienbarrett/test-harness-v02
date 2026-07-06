@@ -26,6 +26,22 @@ def test_main_fails_when_no_implementations_found(tmp_path, capsys):
     assert "no implementation directories found" in capsys.readouterr().err
 
 
+def test_main_fails_when_duplicate_world_names_are_discovered(tmp_path, capsys):
+    """Two packages defining a world with the same name would both need the
+    artifact ``shared.wasm`` -- discovery must hard-fail before anything
+    else runs, naming both packages."""
+    write_wit_file(tmp_path, "a.wit", "package common:a;\n\nworld shared {\n  export foo;\n}\n")
+    write_wit_file(tmp_path, "b.wit", "package common:b;\n\nworld shared {\n  export bar;\n}\n")
+
+    exit_code = cli.main(tmp_path)
+    err = capsys.readouterr().err
+
+    assert exit_code == 1
+    assert "shared" in err
+    assert "common:a" in err
+    assert "common:b" in err
+
+
 def test_main_fails_per_case_when_component_artifact_missing(tmp_path, capsys):
     write_world(tmp_path, "task-component")
     write_suite(
@@ -122,13 +138,11 @@ def test_main_reports_mismatch_between_actual_and_expected(tmp_path, monkeypatch
     assert "FAIL [python] 1/1 failed" in out
 
 
-def test_main_structured_return_value_compared_with_bare_equality(tmp_path, monkeypatch, capsys):
-    """CHARACTERIZATION: a component return value is compared to the plain
-    JSON ``expected`` value with a bare ``==``. A structurally-equivalent but
-    differently-typed return (e.g. a WIT record surfaced as a dataclass)
-    fails this comparison even though a human would call the two values
-    equal. Phase 2 normalizes return values recursively before comparison
-    (docs/refactoring-plan.md Phase 2)."""
+def test_main_structured_return_value_normalized_before_comparison(tmp_path, monkeypatch, capsys):
+    """A component return value structurally equivalent to ``expected`` but
+    differently typed (e.g. a WIT record surfaced as a dataclass instance)
+    is normalized to a plain dict before comparison, so it counts as a
+    match (docs/refactoring-plan.md Phase 2)."""
     write_world(tmp_path, "task-component")
     write_suite(
         tmp_path, "task-collections", "count-tasks",
@@ -145,19 +159,22 @@ def test_main_structured_return_value_compared_with_bare_equality(tmp_path, monk
     exit_code = cli.main(tmp_path)
     out = capsys.readouterr().out
 
-    assert exit_code == 1
-    assert "expected {'name': 'Task 1'}, got Record(name='Task 1')" in out
+    assert exit_code == 0
+    assert "OK   [python] 1/1 passed" in out
 
 
-def test_main_runs_every_suite_against_every_world_cartesian_product(tmp_path, monkeypatch, capsys):
-    """CHARACTERIZATION: every discovered suite runs against every
-    discovered world today, even a world that does not export the suite's
-    interface. Phase 2 restricts execution to worlds that export the
-    suite's interface (docs/refactoring-plan.md Phase 2)."""
+def test_main_runs_suite_only_against_worlds_that_export_its_interface(tmp_path, monkeypatch, capsys):
+    """A suite runs only against the world(s) that export its interface --
+    never the full Cartesian product of every suite and every world
+    (docs/refactoring-plan.md Phase 2)."""
     write_wit_file(
         tmp_path,
         "tasks.wit",
         "package common:tasks;\n\n"
+        "interface task-collections {\n"
+        "    record task {\n        name: string,\n    }\n"
+        "    count-tasks: func(tasks: list<task>) -> u32;\n"
+        "}\n\n"
         "world world-a {\n  export task-collections;\n}\n\n"
         "world world-b {\n  export other-iface;\n}\n",
     )
@@ -166,7 +183,8 @@ def test_main_runs_every_suite_against_every_world_cartesian_product(tmp_path, m
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     write_component(tmp_path, "python", "world-a")
-    write_component(tmp_path, "python", "world-b")
+    # No component for world-b at all -- it must never be touched, since
+    # this suite's interface is not among its exports.
 
     monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
     monkeypatch.setattr(cli, "call_function", lambda *a, **k: 0)
@@ -176,5 +194,142 @@ def test_main_runs_every_suite_against_every_world_cartesian_product(tmp_path, m
 
     assert exit_code == 0
     assert out.count("world=world-a") == 1
-    assert out.count("world=world-b") == 1
+    assert "world=world-b" not in out
+    assert "OK: 1/1 tests passed across 1 implementation(s)." in out
+
+
+def test_main_hard_fails_when_no_world_exports_the_suites_interface(tmp_path, capsys):
+    """A suite whose interface is exported by no discovered world is a hard
+    failure -- never a silent skip (docs/refactoring-plan.md Phase 2)."""
+    write_wit_file(
+        tmp_path, "tasks.wit", "package common:tasks;\n\nworld w {\n  export other-iface;\n}\n"
+    )
+    write_suite(
+        tmp_path, "task-collections", "count-tasks",
+        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
+    )
+    write_component(tmp_path, "python", "w")
+
+    exit_code = cli.main(tmp_path)
+    out = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert "interface 'task-collections' is not exported by any discovered world" in out
+    assert "1/1 test(s) failed." in out
+
+
+def test_main_hard_fails_when_suite_function_not_declared_in_wit_interface(tmp_path, capsys):
+    write_world(tmp_path, "task-component")  # declares task-collections.count-tasks only
+    write_suite(
+        tmp_path, "task-collections", "not-a-real-function",
+        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
+    )
+    write_component(tmp_path, "python", "task-component")
+
+    exit_code = cli.main(tmp_path)
+    out = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert (
+        "function 'not-a-real-function' is not declared on interface "
+        "'task-collections'" in out
+    )
+    assert "1/1 test(s) failed." in out
+
+
+def test_main_world_exporting_only_one_of_two_interfaces(tmp_path, monkeypatch, capsys):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface iface-a {\n  fn-a: func(x: string) -> string;\n}\n\n"
+        "world w {\n  export iface-a;\n}\n",
+    )
+    write_suite(tmp_path, "iface-a", "fn-a", [{"description": "a", "input": {"x": "hi"}, "expected": "hi"}])
+    write_suite(tmp_path, "iface-b", "fn-b", [{"description": "b", "input": {"y": 1}, "expected": 1}])
+    write_component(tmp_path, "python", "w")
+
+    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(cli, "call_function", lambda store, instance, iface, fn, args: args[0])
+
+    exit_code = cli.main(tmp_path)
+    out = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert "world=w  interface=iface-a  function=fn-a" in out
+    assert "interface 'iface-b' is not exported by any discovered world" in out
+
+
+def test_main_uses_wit_declared_param_order_not_json_insertion_order(tmp_path, monkeypatch, capsys):
+    """End to end: positional args are built from the WIT function's
+    declared parameter order, not the JSON test input's own key order
+    (docs/refactoring-plan.md Phase 2)."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface ordering {\n"
+        "  combine: func(b: string, a: string) -> string;\n"
+        "}\n\n"
+        "world w {\n  export ordering;\n}\n",
+    )
+    # JSON insertion order is a, b -- the reverse of the declared params.
+    write_suite(
+        tmp_path, "ordering", "combine",
+        [{"description": "d", "input": {"a": "A", "b": "B"}, "expected": "BA"}],
+    )
+    write_component(tmp_path, "python", "w")
+
+    captured: dict[str, list] = {}
+
+    def fake_call_function(store, instance, interface_export, function_name, args):
+        captured["args"] = args
+        return args[0] + args[1]
+
+    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(cli, "call_function", fake_call_function)
+
+    exit_code = cli.main(tmp_path)
+
+    assert exit_code == 0
+    assert captured["args"] == ["B", "A"]
+
+
+def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(tmp_path, monkeypatch, capsys):
+    """Two WIT packages in separate files, each with its own interface and
+    suite, are routed to the correct component/world -- not mixed
+    (docs/refactoring-plan.md Phase 2)."""
+    write_wit_file(
+        tmp_path,
+        "pkg-a.wit",
+        "package common:a;\n\ninterface iface-a {\n  fn-a: func(x: string) -> string;\n}\n\n"
+        "world world-a {\n  export iface-a;\n}\n",
+    )
+    write_wit_file(
+        tmp_path,
+        "pkg-b.wit",
+        "package common:b;\n\ninterface iface-b {\n  fn-b: func(y: string) -> string;\n}\n\n"
+        "world world-b {\n  export iface-b;\n}\n",
+    )
+    write_suite(tmp_path, "iface-a", "fn-a", [{"description": "d-a", "input": {"x": "A"}, "expected": "A"}])
+    write_suite(tmp_path, "iface-b", "fn-b", [{"description": "d-b", "input": {"y": "B"}, "expected": "B"}])
+    write_component(tmp_path, "python", "world-a")
+    write_component(tmp_path, "python", "world-b")
+
+    seen_exports: list[str] = []
+
+    def fake_call_function(store, instance, interface_export, function_name, args):
+        seen_exports.append(interface_export)
+        return args[0]
+
+    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(cli, "call_function", fake_call_function)
+
+    exit_code = cli.main(tmp_path)
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "world=world-a  interface=iface-a  function=fn-a" in out
+    assert "world=world-b  interface=iface-b  function=fn-b" in out
+    assert seen_exports == ["common:a/iface-a", "common:b/iface-b"]
     assert "OK: 2/2 tests passed across 1 implementation(s)." in out

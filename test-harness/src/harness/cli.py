@@ -5,9 +5,15 @@ Convention-based discovery (no metadata required in test files)::
     common/functions/{interface}/{function}.test.json
     {lang}/component/{world}.wasm
 
-The WIT world name is derived from the WIT file in ``common/wit/``.
-The interface name is the directory name under ``common/functions/``.
-The function name is the file stem (before ``.test.json``).
+Namespace, package, world names, and each world's exported interfaces are
+all discovered from the WIT file(s) in ``common/wit/`` (see ``harness.wit``).
+The interface name is the directory name under ``common/functions/``. The
+function name is the file stem (before ``.test.json``).
+
+A suite runs only against the world(s) that export its interface -- never
+the full Cartesian product of every suite and every world. A suite whose
+interface is exported by no discovered world is a hard failure, not a
+silent skip.
 
 Implementations are discovered by scanning for ``*/component/`` directories.
 Any directory matching that pattern is expected to contain a
@@ -23,24 +29,25 @@ from pathlib import Path
 
 from wasmtime import Engine
 
-from .conversion import prepare_args
+from .conversion import normalize_return, prepare_args
 from .implementations import discover_implementations
 from .invocation import call_function, instantiate_component
 from .models import discover_test_suites
-from .wit import discover_worlds
+from .wit import WitError, discover_worlds
 
 # test-harness/src/harness/cli.py -> repo root is four levels up.
 ROOT = Path(__file__).resolve().parents[3]
-
-# WIT package namespace and package name.
-WIT_NAMESPACE = "common"
-WIT_PACKAGE = "tasks"
 
 
 def main(root: Path | None = None) -> int:
     root = ROOT if root is None else root
 
-    worlds = discover_worlds(root)
+    try:
+        worlds = discover_worlds(root)
+    except WitError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 1
+
     if not worlds:
         print("FAIL: no worlds found in common/wit/", file=sys.stderr)
         return 1
@@ -66,16 +73,44 @@ def main(root: Path | None = None) -> int:
 
     engine = Engine()
 
-    for world in worlds:
-        for suite in suites:
-            interface = suite.interface
-            function = suite.function
-            tests = suite.tests
-            suite_rel = suite.path.relative_to(root)
-            interface_export = f"{WIT_NAMESPACE}:{WIT_PACKAGE}/{interface}"
+    for suite in suites:
+        interface = suite.interface
+        function = suite.function
+        tests = suite.tests
+        suite_rel = suite.path.relative_to(root)
 
-            print(f"--- {suite_rel}")
+        print(f"--- {suite_rel}")
+
+        matching_worlds = [world for world in worlds if world.exports_interface(interface)]
+        if not matching_worlds:
+            available = ", ".join(sorted({world.name for world in worlds})) or "(none)"
+            print(
+                f"    FAIL: interface '{interface}' is not exported by any "
+                f"discovered world (worlds: {available})"
+            )
+            print()
+            failed += len(tests)
+            total += len(tests)
+            continue
+
+        for world in matching_worlds:
+            signature = world.function_signature(interface, function)
+
             print(f"    world={world.name}  interface={interface}  function={function}")
+
+            if signature is None:
+                print(
+                    f"    FAIL: function '{function}' is not declared on "
+                    f"interface '{interface}' in the WIT contract for world "
+                    f"'{world.name}'"
+                )
+                print()
+                failed += len(tests)
+                total += len(tests)
+                continue
+
+            interface_export = world.interface_export(interface)
+
             print(f"    {len(tests)} test case(s) x {len(langs)} implementation(s)")
             print()
 
@@ -107,10 +142,11 @@ def main(root: Path | None = None) -> int:
                     expected = case.expected
 
                     try:
-                        args = prepare_args(case.input)
-                        actual = call_function(
+                        args = prepare_args(case.input, signature.params)
+                        raw_actual = call_function(
                             store, instance, interface_export, function, args,
                         )
+                        actual = normalize_return(raw_actual)
                         if actual == expected:
                             lang_passed += 1
                             passed += 1

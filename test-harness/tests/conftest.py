@@ -19,10 +19,23 @@ def write_wit_file(root: Path, filename: str, text: str) -> Path:
 
 
 def write_world(root: Path, world_name: str, exported_interface: str = "task-collections") -> Path:
+    """Write a single-package WIT file with one world exporting one
+    interface that declares a ``count-tasks(tasks: list<task>) -> u32``
+    function -- the same shape as the real ``common/wit/tasks.wit``
+    contract, so suite-driven tests that build a ``task-collections/
+    count-tasks`` suite (the common case) get a matching WIT signature for
+    free."""
     return write_wit_file(
         root,
         "tasks.wit",
-        f"package common:tasks;\n\nworld {world_name} {{\n  export {exported_interface};\n}}\n",
+        f"package common:tasks;\n\n"
+        f"interface {exported_interface} {{\n"
+        f"    record task {{\n"
+        f"        name: string,\n"
+        f"    }}\n\n"
+        f"    count-tasks: func(tasks: list<task>) -> u32;\n"
+        f"}}\n\n"
+        f"world {world_name} {{\n  export {exported_interface};\n}}\n",
     )
 
 

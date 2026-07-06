@@ -25,14 +25,9 @@ class FakeLinker:
         self.raises = raises
         self.returns = returns if returns is not None else object()
         self.add_wasip2_called = False
-        self.trap_called = False
-        self.allow_shadowing = False
 
     def add_wasip2(self):
         self.add_wasip2_called = True
-
-    def define_unknown_imports_as_traps(self, comp):
-        self.trap_called = True
 
     def instantiate(self, store, comp):
         if self.raises is not None:
@@ -88,90 +83,20 @@ def test_instantiate_component_succeeds_on_first_try():
     assert isinstance(store, FakeStore)
     assert store.wasi == "wasi-config"
     assert linker.add_wasip2_called
-    assert not linker.trap_called
 
 
-def test_instantiate_component_falls_back_on_the_real_missing_instance_import_error():
-    """The exact message shape wasmtime==43.0.0 raises for a missing
-    *instance* import, verified empirically by instantiating a
-    componentize-py-built component with an unresolved interface import and
-    only ``add_wasip2()`` registered:
-
-        component imports instance `test:comp/custom-import`, but a
-        matching implementation was not found in the linker
-
-        Caused by:
-            0: instance export `do-thing` has the wrong type
-            1: function implementation is missing
-    """
-    first_linker = FakeLinker(
-        raises=RuntimeError(
-            "component imports instance `test:comp/custom-import`, but a "
-            "matching implementation was not found in the linker\n\n"
-            "Caused by:\n"
-            "    0: instance export `do-thing` has the wrong type\n"
-            "    1: function implementation is missing\n"
-        )
+def test_instantiate_component_propagates_instantiation_failure_unchanged():
+    """No fallback exists (removed in docs/refactoring-plan.md Phase 8, once
+    all three real components were confirmed to instantiate cleanly against
+    a plain WASIp2-only linker -- see tests/test_real_component_contracts.py).
+    Any instantiation failure -- including the exact "matching
+    implementation was not found in the linker" shape wasmtime==43.0.0 used
+    to trigger a retry for -- now propagates unchanged, with exactly one
+    linker ever constructed."""
+    original = RuntimeError(
+        "component imports instance `test:comp/custom-import`, but a "
+        "matching implementation was not found in the linker"
     )
-    second_linker = FakeLinker(returns="fallback-instance")
-    linkers = iter([first_linker, second_linker])
-
-    store, instance = instantiate_component(
-        engine=object(),
-        wasm_path=Path("fake.wasm"),
-        component_from_file=lambda engine, path: "component",
-        linker_factory=lambda engine: next(linkers),
-        store_factory=FakeStore,
-        wasi_config_factory=lambda: "wasi-config",
-    )
-
-    assert instance == "fallback-instance"
-    assert second_linker.trap_called
-    assert second_linker.allow_shadowing is True
-    assert second_linker.add_wasip2_called
-
-
-def test_instantiate_component_falls_back_on_the_real_missing_function_import_error():
-    """The message shape wasmtime==43.0.0 raises for a missing bare
-    *function* import (as opposed to a whole instance), verified
-    empirically the same way:
-
-        component imports function `do-thing`, but a matching
-        implementation was not found in the linker
-
-        Caused by:
-            function implementation is missing
-    """
-    first_linker = FakeLinker(
-        raises=RuntimeError(
-            "component imports function `do-thing`, but a matching "
-            "implementation was not found in the linker\n\n"
-            "Caused by:\n"
-            "    function implementation is missing\n"
-        )
-    )
-    second_linker = FakeLinker(returns="fallback-instance")
-    linkers = iter([first_linker, second_linker])
-
-    store, instance = instantiate_component(
-        engine=object(),
-        wasm_path=Path("fake.wasm"),
-        component_from_file=lambda engine, path: "component",
-        linker_factory=lambda engine: next(linkers),
-        store_factory=FakeStore,
-        wasi_config_factory=lambda: "wasi-config",
-    )
-
-    assert instance == "fallback-instance"
-    assert second_linker.trap_called
-
-
-def test_instantiate_component_does_not_fall_back_on_unrelated_failure():
-    """A failure that is *not* the specific missing-import shape (e.g. a
-    malformed module, or a trap unrelated to imports) must not trigger the
-    fallback -- it should re-raise the original exception unchanged, and
-    never even construct a second linker."""
-    original = RuntimeError("failed to parse WebAssembly module: unexpected end of section")
     first_linker = FakeLinker(raises=original)
     linker_calls: list[FakeLinker] = []
 
@@ -192,36 +117,6 @@ def test_instantiate_component_does_not_fall_back_on_unrelated_failure():
 
     assert excinfo.value is original
     assert len(linker_calls) == 1  # no fallback linker was ever constructed
-
-
-def test_instantiate_component_propagates_fallback_failure_chained_to_original():
-    """When the fallback instantiation also fails, the original failure
-    reason is preserved (not discarded) -- both the original and the
-    fallback error are visible, and the original is the exception's
-    ``__cause__`` so a full traceback shows both."""
-    original = RuntimeError(
-        "component imports instance `test:comp/custom-import`, but a "
-        "matching implementation was not found in the linker"
-    )
-    fallback = RuntimeError("second failure")
-    first_linker = FakeLinker(raises=original)
-    second_linker = FakeLinker(raises=fallback)
-    linkers = iter([first_linker, second_linker])
-
-    with pytest.raises(Exception) as excinfo:
-        instantiate_component(
-            engine=object(),
-            wasm_path=Path("fake.wasm"),
-            component_from_file=lambda engine, path: "component",
-            linker_factory=lambda engine: next(linkers),
-            store_factory=FakeStore,
-            wasi_config_factory=lambda: "wasi-config",
-        )
-
-    assert excinfo.value.__cause__ is original
-    message = str(excinfo.value)
-    assert "matching implementation was not found in the linker" in message
-    assert "second failure" in message
 
 
 # --- call_function -----------------------------------------------------

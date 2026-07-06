@@ -111,3 +111,36 @@ layers should re-prove the same fact:
   is kept rather than treated as a duplicate. No language currently runs
   the compiled `.wasm` component inside a real browser; closing that gap
   is out of scope for this phase.
+
+## Component capability minimization
+
+`javascript/component/lifecycle.sh` builds `task-component.wasm` with
+`jco componentize ... -d all` and no `--enable` overrides: `-d all` disables
+every optional WASI capability jco knows how to gate (clocks, random,
+stdio, http, fetch-event). `taskCollections.countTasks` (`src/app.js`) is a
+pure function that touches none of them. An earlier version of this build
+passed `-d all --enable clocks --enable random --enable stdio`, which
+re-enabled three capabilities the component never used, for no reason —
+the component imported 16 `wasi:*` interfaces (cli, clocks, filesystem,
+io, random) instead of zero, and was about 30 KB larger. Verified via
+`wasmtime.component.Component(...).type.imports(engine)` against the real
+built artifact (docs/refactoring-plan.md Phase 8):
+
+| | imports | size (bytes) |
+| --- | --- | --- |
+| before (`-d all --enable clocks --enable random --enable stdio`) | 16 (`wasi:cli/*`, `wasi:clocks/*`, `wasi:filesystem/*`, `wasi:io/*`, `wasi:random/*`) | 11,576,710 |
+| after (`-d all`, no enables) | 0 | 11,546,850 |
+
+The Python and Rust components were not changed. Python's component already
+imported nothing; Rust's imports 10 standard `wasi:cli`/`wasi:clocks`/
+`wasi:filesystem`/`wasi:io` interfaces (the baseline `wasm32-wasip1` +
+`cargo-component` adapter shape), all of which `wasmtime`'s
+`Linker.add_wasip2()` provides. All three components now instantiate
+against a plain WASIp2-only linker with no additional capabilities and no
+retry — `test-harness/src/harness/invocation.py`'s narrower "define unknown
+imports as traps" fallback (introduced in Phase 2 for a componentize-js
+output that used to import `wasi:http`) was removed entirely once this was
+confirmed for all three real components; see
+`test-harness/tests/test_real_component_contracts.py`, which fails loudly
+(not silently) if a component still needs an import the harness does not
+provide, or if `.wasm` artifacts have not been built yet.

@@ -79,6 +79,15 @@ another agent can take over at any point.
   of `test`); README lifecycle docs rewritten; 215 harness tests. One-time
   migration removed ~330 MB of stale orphaned caches (.cache dirs, old
   cargo targets).
+- Phase 8 — DONE (commit titled "Minimize component capabilities and build
+  cost (Phase 8)"). JS component built with `-d all` and no --enable
+  overrides (imports 16 → 0); unknown-import fallback removed from
+  invocation.py; new real-artifact harness test asserts plain-wasip2
+  instantiation + full WIT export surface for all components; Rust
+  toolchain on the minimal profile (+wasm32-wasip1, llvm-tools-preview,
+  clippy, rustfmt; closure −31.5%); browser/FHS devshell split
+  investigated and deferred (jco needs the FHS sandbox; appimageTools
+  baseline closure is flag-independent). 216 harness tests.
 - Untracked files at repo root to leave alone: `parser-plan.md` and the raw
   `www.newworld.co.nz_...html` capture (original of the Phase 4 fixture).
 
@@ -421,18 +430,35 @@ binding, transpiled, or WASM artifacts survive `purge`.
 
 ## Phase 8 — Minimize component capabilities and build cost
 
-- [ ] Determine which JCO flags are actually required by each JavaScript
-  component.
-- [ ] Remove clocks, randomness, stdio, and broad `-d all` capability exposure
-  from pure components where possible.
-- [ ] Record component sizes before and after the change.
-- [ ] Assert required imports/exports in harness tests.
-- [ ] Confirm unknown-import trap fallback is no longer needed, or narrow it to
-  an explicitly documented compatibility case.
-- [ ] Change the Rust Nix toolchain from the default profile to a minimal
-  profile with only required extensions.
-- [ ] Split heavyweight JavaScript browser/FHS tooling from lighter workflows
-  if this can be done without weakening reproducibility.
+- [x] Determine which JCO flags are actually required by each JavaScript
+  component. (`-d all` alone; the old `--enable clocks/random/stdio` were
+  re-enabling capabilities the pure component never uses. The FHS sandbox
+  is required by componentize-js itself, regardless of flags.)
+- [x] Remove clocks, randomness, stdio, and broad `-d all` capability exposure
+  from pure components where possible. (JS imports: 16 wasi interfaces → 0.
+  Python was already 0; Rust keeps the 10 standard wasip1-adapter imports,
+  all satisfied by add_wasip2().)
+- [x] Record component sizes before and after the change. (JS 11,576,710 →
+  11,546,850 B — modest, StarlingMonkey dominates; Python 18,380,357 B and
+  Rust 65,540 B unchanged.)
+- [x] Assert required imports/exports in harness tests.
+  (tests/test_real_component_contracts.py: real artifacts must instantiate
+  on the plain wasip2 linker and expose every WIT-declared export; missing
+  artifact = loud failure telling you to run task build, never a skip.)
+- [x] Confirm unknown-import trap fallback is no longer needed, or narrow it to
+  an explicitly documented compatibility case. (REMOVED entirely — all three
+  real components instantiate cleanly; an unsatisfied import is now a loud
+  contract violation per constitution §6.3.)
+- [x] Change the Rust Nix toolchain from the default profile to a minimal
+  profile with only required extensions. (rust-bin 1.92.0 minimal +
+  wasm32-wasip1 + llvm-tools-preview + clippy + rustfmt for Phase 9;
+  devshell closure 2.05 GB → 1.41 GB.)
+- [x] Split heavyweight JavaScript browser/FHS tooling from lighter workflows
+  if this can be done without weakening reproducibility. (Investigated and
+  deferred: jco componentize itself requires the FHS sandbox, and the
+  appimageTools FHS baseline pulls its large closure regardless of extra
+  packages — a genuine split needs a hand-built minimal FHS and lifecycle
+  restructuring, out of this phase's scope.)
 
 Done when component imports reflect actual needs and setup/build costs are
 measurably reduced.

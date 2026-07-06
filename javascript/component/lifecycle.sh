@@ -25,10 +25,18 @@ cmd_setup() {
 }
 
 cmd_build() {
+  # -d all disables every optional WASI capability jco/componentize-js knows
+  # how to gate (clocks, random, stdio, http, fetch-event). taskCollections
+  # is a pure function (see src/app.js) that touches none of them, and
+  # empirically the resulting component imports nothing at all -- verified
+  # via wasmtime.component.Component.type().imports(engine) against the
+  # built artifact (docs/refactoring-plan.md Phase 8). Do not re-add
+  # `--enable clocks/random/stdio` (the pre-Phase-8 flags): each one was
+  # previously undoing part of `-d all` for no reason this component needs.
   if [ -n "${JCO_FHS:-}" ]; then
-    "$JCO_FHS" -c "npx jco componentize src/app.js --wit $wit_path -n $world_name -d all --enable clocks --enable random --enable stdio -o $output_wasm"
+    "$JCO_FHS" -c "npx jco componentize src/app.js --wit $wit_path -n $world_name -d all -o $output_wasm"
   else
-    npx jco componentize src/app.js --wit "$wit_path" -n "$world_name" -d all --enable clocks --enable random --enable stdio -o "$output_wasm"
+    npx jco componentize src/app.js --wit "$wit_path" -n "$world_name" -d all -o "$output_wasm"
   fi
   if [ -n "${JCO_FHS:-}" ]; then
     "$JCO_FHS" -c "npx jco transpile $output_wasm -o transpiled/"

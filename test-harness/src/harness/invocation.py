@@ -28,27 +28,6 @@ class SupportsExports(Protocol):
     def get_func(self, store: Any, index: Any) -> Any: ...
 
 
-# wasmtime 43's component linker raises an error whose message contains
-# exactly this phrase when a component imports something the linker has no
-# definition for -- verified empirically against wasmtime==43.0.0 by
-# instantiating a componentize-py-built component with an unresolved import,
-# for both shapes it can take:
-#   "component imports instance `ns:pkg/iface`, but a matching
-#    implementation was not found in the linker"
-#   "component imports function `name`, but a matching implementation was
-#    not found in the linker"
-# Matching on this substring keeps the fallback narrowly scoped to the
-# unknown/missing-import case it exists to handle (e.g. a componentize-js
-# output importing wasi:http, which wasmtime-py does not provide), instead
-# of also swallowing unrelated instantiation failures such as a malformed
-# module or a trapping start function.
-_MISSING_IMPORT_MARKER = "matching implementation was not found in the linker"
-
-
-def _is_missing_import_error(exc: Exception) -> bool:
-    return _MISSING_IMPORT_MARKER in str(exc)
-
-
 def instantiate_component(
     engine: Engine,
     wasm_path: Path,
@@ -60,15 +39,24 @@ def instantiate_component(
 ) -> tuple[Any, Any]:
     """Instantiate a WASM component with WASI support.
 
-    Returns ``(store, instance)`` on success or raises on failure.
+    Returns ``(store, instance)`` on success or raises unchanged on failure.
 
-    If instantiation fails with the specific "unknown import" error shape
-    wasmtime raises (see ``_MISSING_IMPORT_MARKER`` above), retry once with
-    unknown imports defined as traps -- this only works if the tested
-    function doesn't actually call into those imports at runtime. Any other
-    failure is re-raised unchanged: this fallback is not meant to mask it.
-    If the fallback instantiation also fails, the original exception is
-    preserved as the cause of a new exception describing both failures.
+    A single plain WASIp2 linker (``linker.add_wasip2()``) is used -- no
+    retry, no fallback. Earlier (Phase 2 of docs/refactoring-plan.md) this
+    function retried a missing-import instantiation failure with unknown
+    imports defined as traps, to tolerate a componentize-js output that
+    imported ``wasi:http`` (which wasmtime-py's ``add_wasip2()`` does not
+    provide). Phase 8 removed that fallback after minimizing the
+    JavaScript component's componentize-js flags (``-d all`` with no
+    ``--enable`` overrides in javascript/component/lifecycle.sh) and then
+    confirming, by inspecting all three real built components with
+    ``wasmtime.component.Component(...).type.imports(engine)``, that none
+    of them import anything beyond what ``add_wasip2()`` supplies. A
+    component that still needed an import the harness does not provide
+    would be a contract violation -- constitution.md Sec 6.3 requires
+    components to "avoid heavyweight host libraries that compromise WASM
+    portability" -- so that case now fails loudly and immediately instead
+    of being silently patched over.
     """
     store = store_factory(engine)
     store.set_wasi(wasi_config_factory())
@@ -77,28 +65,8 @@ def instantiate_component(
     linker = linker_factory(engine)
     linker.add_wasip2()
 
-    try:
-        instance = linker.instantiate(store, comp)
-        return store, instance
-    except Exception as original_exc:
-        if not _is_missing_import_error(original_exc):
-            raise
-
-        store = store_factory(engine)
-        store.set_wasi(wasi_config_factory())
-        linker = linker_factory(engine)
-        linker.define_unknown_imports_as_traps(comp)
-        linker.allow_shadowing = True
-        linker.add_wasip2()
-        try:
-            instance = linker.instantiate(store, comp)
-            return store, instance
-        except Exception as fallback_exc:
-            raise RuntimeError(
-                "component instantiation failed even after falling back to "
-                f"trapping unknown imports; original error: {original_exc}; "
-                f"fallback error: {fallback_exc}"
-            ) from original_exc
+    instance = linker.instantiate(store, comp)
+    return store, instance
 
 
 def call_function(

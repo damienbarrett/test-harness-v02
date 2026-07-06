@@ -19,11 +19,23 @@
         }));
     in {
       devShells = forSystems (pkgs: {
+        # `minimal` (rustc, cargo, rust-std only) instead of `default`
+        # (adds rust-docs, rustfmt, clippy) plus only the extensions this
+        # repo actually needs (docs/refactoring-plan.md Phase 8):
+        #   - llvm-tools-preview: required by cargo-llvm-cov (`task
+        #     rust-coverage`) for source-based coverage instrumentation.
+        #   - clippy, rustfmt: not used by any lifecycle verb yet, but
+        #     Phase 9's quality gates (`cargo fmt --check`, `cargo clippy
+        #     -D warnings`) will need them, so they are kept explicit
+        #     extensions here rather than pulled in incidentally via
+        #     `default`. rust-analyzer and rust-docs are not needed by any
+        #     lifecycle verb or editor tooling this repo depends on, so
+        #     they are dropped.
         default = pkgs.mkShell {
           packages = [
-            (pkgs.rust-bin.stable."1.92.0".default.override {
+            (pkgs.rust-bin.stable."1.92.0".minimal.override {
               targets = [ "wasm32-wasip1" ];
-              extensions = [ "llvm-tools-preview" ];
+              extensions = [ "llvm-tools-preview" "clippy" "rustfmt" ];
             })
             pkgs.cargo-component
             pkgs.cargo-llvm-cov

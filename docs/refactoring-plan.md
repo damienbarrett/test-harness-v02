@@ -1,5 +1,51 @@
 # Repository Refactoring Plan
 
+## Execution status (living handoff section)
+
+Keep this section and the phase checkboxes current in every phase commit so
+another agent can take over at any point.
+
+- Branch: `refactor/harness-foundations`, branched from `main`.
+- Working model: each phase is implemented by a subagent, then reviewed,
+  independently re-verified, and committed as one reviewable change by the
+  orchestrating session. Gates that must stay green after every phase:
+  `task test`, `just test`, `task wasm:test`, `task contracts:check`,
+  `task check:runners` (71 command-body warnings are pre-existing baseline,
+  resolved in Phase 6).
+- Phase 0 — DONE, commit `84def6c`. Baseline in `docs/baseline-phase0.md`.
+  Pre-existing failures to fix in Phase 9: rustfmt drift (the rust/library
+  instance was incidentally removed by Phase 3; rust/component remains),
+  fast-uri high-severity npm audit finding in both JS packages.
+- Phase 1 — DONE, commit `deb322e`. `test-harness/` is a locked uv project;
+  the monolith is split into `src/harness/{models,wit,implementations,
+  conversion,invocation,cli,runner_parity}.py`; `task coverage` enforces
+  100% on `src/harness/`; entry shims `./run-wasm-tests.py`,
+  `./check-runner-parity.py` keep their paths.
+- Phase 2 — DONE, commit `1631c09`. Full WIT parsing (namespace, package,
+  worlds, exports, function signatures, records); suites run only against
+  exporting worlds; WIT-declared param order; recursive record conversion
+  and return normalization; unknown-import fallback narrowed to wasmtime's
+  "matching implementation was not found in the linker"; duplicate world
+  names fail fast.
+- Phase 3 — DONE, commit `2fce384`. `harness.contracts` central validator
+  runs before any component invocation and via root
+  `contracts:check`/`contracts-check`; suite-format schema at
+  `common/schemas/test-suite.schema.json`; schemas carry repo-relative
+  `$id`s resolved through a scan-built registry; u32 bounds on count-tasks
+  returns; duplicated per-language schema-validation tests removed.
+- Phase 4 — IN PROGRESS (subagent): `harness/fixtures.py` recursive
+  `$fixture` resolver (gzip/utf-8, realpath containment under
+  `common/fixtures/`, `HARNESS_FIXTURE_MAX_BYTES` default 8 MiB),
+  resolution before validation and execution, `targets` semantics,
+  New World HTML capture copied to
+  `common/fixtures/html-parser/newworld-search-eggs.html.gz`. Note: the
+  full "same case drives native and WASM" demo is deferred until an
+  html-parser capability exists (the plan forbids starting the parser
+  before items 1–4 are complete); the machinery is proven by the
+  conformance suite plus a real-fixture integration test.
+- Untracked files at repo root to leave alone: `parser-plan.md` and the raw
+  `www.newworld.co.nz_...html` capture (original of the Phase 4 fixture).
+
 ## Goal
 
 Make the repository safe to extend beyond the current `count-tasks` example,
@@ -46,20 +92,20 @@ Out of scope unless separately approved:
 
 ## Phase 0 — Establish the baseline
 
-- [ ] Create a feature branch.
-- [ ] Record the output of:
-  - [ ] `task setup`
-  - [ ] `task test`
-  - [ ] `task wasm:test`
-  - [ ] `task coverage`
-  - [ ] `task check:runners`
-- [ ] Record existing non-lifecycle checks:
-  - [ ] All JSON files parse.
-  - [ ] All shell scripts pass `bash -n`.
-  - [ ] Rust passes `cargo clippy --all-targets -- -D warnings`.
-  - [ ] Record the existing Rust formatting failure before fixing it.
-  - [ ] Record current `npm audit` results.
-- [ ] Confirm the worktree contains no generated artifacts.
+- [x] Create a feature branch.
+- [x] Record the output of:
+  - [x] `task setup`
+  - [x] `task test`
+  - [x] `task wasm:test`
+  - [x] `task coverage`
+  - [x] `task check:runners`
+- [x] Record existing non-lifecycle checks:
+  - [x] All JSON files parse.
+  - [x] All shell scripts pass `bash -n`.
+  - [x] Rust passes `cargo clippy --all-targets -- -D warnings`.
+  - [x] Record the existing Rust formatting failure before fixing it.
+  - [x] Record current `npm audit` results.
+- [x] Confirm the worktree contains no generated artifacts.
 
 Done when the current behavior and pre-existing failures are documented.
 
@@ -68,78 +114,83 @@ Done when the current behavior and pre-existing failures are documented.
 The harness is central infrastructure, but its current test task only compiles
 its Python files.
 
-- [ ] Add a locked Python project for `test-harness/` with pytest, PyYAML,
+- [x] Add a locked Python project for `test-harness/` with pytest, PyYAML,
   coverage, and Wasmtime dependencies.
-- [ ] Replace `uv run --with ...` dependency resolution with locked
+- [x] Replace `uv run --with ...` dependency resolution with locked
   dependencies.
-- [ ] Split `run-wasm-tests.py` into focused modules:
-  - [ ] Contract and suite models.
-  - [ ] WIT discovery.
-  - [ ] Implementation discovery.
-  - [ ] Fixture/value conversion.
-  - [ ] Component invocation.
-  - [ ] Reporting and CLI entry point.
-- [ ] Add unit tests for:
-  - [ ] No WIT worlds found.
-  - [ ] No suites found.
-  - [ ] No implementations found.
-  - [ ] Multiple WIT packages.
-  - [ ] Multiple worlds in one package.
-  - [ ] Interfaces exported by only one applicable world.
-  - [ ] Missing component artifacts.
-  - [ ] Missing interface and function exports.
-  - [ ] Instantiation and invocation failures.
-  - [ ] Nested lists, records, options, and result values.
-  - [ ] Structured component return values converted to plain JSON values.
-- [ ] Make `test-harness` coverage enforce the agreed threshold instead of
-  aliasing `py_compile`.
+- [x] Split `run-wasm-tests.py` into focused modules:
+  - [x] Contract and suite models.
+  - [x] WIT discovery.
+  - [x] Implementation discovery.
+  - [x] Fixture/value conversion.
+  - [x] Component invocation.
+  - [x] Reporting and CLI entry point.
+- [x] Add unit tests for:
+  - [x] No WIT worlds found.
+  - [x] No suites found.
+  - [x] No implementations found.
+  - [x] Multiple WIT packages.
+  - [x] Multiple worlds in one package.
+  - [x] Interfaces exported by only one applicable world.
+  - [x] Missing component artifacts.
+  - [x] Missing interface and function exports.
+  - [x] Instantiation and invocation failures.
+  - [x] Nested lists, records, options, and result values.
+  - [x] Structured component return values converted to plain JSON values.
+- [x] Make `test-harness` coverage enforce the agreed threshold instead of
+  aliasing `py_compile`. (Threshold: 100% on `src/harness/`.)
 
 Done when a deliberate defect in discovery or value conversion causes
 `test-harness` tests to fail.
 
 ## Phase 2 — Correct WIT and suite discovery
 
-- [ ] Replace hardcoded `common:tasks` namespace/package values with information
+- [x] Replace hardcoded `common:tasks` namespace/package values with information
   discovered from each WIT package.
-- [ ] Parse, for each world:
-  - [ ] Namespace.
-  - [ ] Package name.
-  - [ ] World name.
-  - [ ] Exported interfaces.
-- [ ] Match each test suite only to worlds that export its interface.
-- [ ] Stop executing the Cartesian product of every suite and every world.
-- [ ] Use contract-declared parameter order instead of JSON object insertion
+- [x] Parse, for each world:
+  - [x] Namespace.
+  - [x] Package name.
+  - [x] World name.
+  - [x] Exported interfaces.
+- [x] Match each test suite only to worlds that export its interface.
+- [x] Stop executing the Cartesian product of every suite and every world.
+- [x] Use contract-declared parameter order instead of JSON object insertion
   order.
-- [ ] Make record conversion recursive.
-- [ ] Normalize component return values recursively before comparison.
-- [ ] Restrict unknown-import fallback to the specific missing-import failure
-  it is intended to handle.
-- [ ] Preserve a useful original exception when fallback instantiation also
+- [x] Make record conversion recursive.
+- [x] Normalize component return values recursively before comparison.
+- [x] Restrict unknown-import fallback to the specific missing-import failure
+  it is intended to handle. (Matches wasmtime 43's "matching implementation
+  was not found in the linker".)
+- [x] Preserve a useful original exception when fallback instantiation also
   fails.
-- [ ] Detect duplicate world artifact names across packages.
+- [x] Detect duplicate world artifact names across packages.
 
 Done when tests containing two packages, multiple worlds, and record-shaped
 outputs execute only against their correct components.
 
 ## Phase 3 — Centralize contract validation
 
-- [ ] Define and validate a JSON Schema for the `*.test.json` suite format.
-- [ ] Check that:
-  - [ ] The suite's function name agrees with its filename.
-  - [ ] The interface agrees with its directory name.
-  - [ ] Every case has a unique, non-empty description.
-  - [ ] Every input validates against the function parameter schema.
-  - [ ] Every expected value validates against the return schema.
-  - [ ] Every referenced fixture exists.
-- [ ] Add `$id` values or a deterministic schema registry so `$ref` resolution
-  does not require manually replacing nested schemas.
-- [ ] Align JSON Schema with WIT numeric constraints.
-  - [ ] Add `minimum: 0` and `maximum: 4294967295` for `u32` results.
-- [ ] Add a conformance check for duplicate types represented in both WIT and
-  JSON Schema, or document which representation is authoritative.
-- [ ] Remove duplicated schema-validation tests from language implementations
-  once the central validator covers them.
-- [ ] Add a root lifecycle command such as `task contracts:check` and its Just
+- [x] Define and validate a JSON Schema for the `*.test.json` suite format.
+- [x] Check that:
+  - [x] The suite's function name agrees with its filename.
+  - [x] The interface agrees with its directory name.
+  - [x] Every case has a unique, non-empty description.
+  - [x] Every input validates against the function parameter schema.
+  - [x] Every expected value validates against the return schema.
+  - [x] Every referenced fixture exists. (Phase 3: existence + confinement
+    under `common/fixtures/`; full resolution semantics land in Phase 4.)
+- [x] Add `$id` values or a deterministic schema registry so `$ref` resolution
+  does not require manually replacing nested schemas. (Both: `$id` = repo-
+  relative path, resolved via a scan-built registry.)
+- [x] Align JSON Schema with WIT numeric constraints.
+  - [x] Add `minimum: 0` and `maximum: 4294967295` for `u32` results.
+- [x] Add a conformance check for duplicate types represented in both WIT and
+  JSON Schema, or document which representation is authoritative. (Both: WIT
+  documented authoritative; entity schemas checked as exact field mirrors.)
+- [x] Remove duplicated schema-validation tests from language implementations
+  once the central validator covers them. (ajv left as an unused JS
+  devDependency on purpose — dependency pruning is Phase 8/9.)
+- [x] Add a root lifecycle command such as `task contracts:check` and its Just
   equivalent.
 
 Done when malformed suites, missing fixtures, WIT/schema numeric drift, and

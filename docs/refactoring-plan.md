@@ -70,6 +70,15 @@ another agent can take over at any point.
   shell into `task` inside nix develop regardless of the invoking runner —
   that is what makes both runners' bodies byte-identical; which runner is
   used internally is an implementation detail.
+- Phase 7 — DONE (commit titled "Repair lifecycle state ownership
+  (Phase 7)"). HARNESS_DIR/-CACHE_DIR/-OUTPUT_DIR/UV_CACHE_DIR/
+  CARGO_TARGET_DIR defined once per top-level dir in lifecycle.sh with one
+  shared child fallback rule; clean = outputs only, purge = everything
+  repo-owned (verified zero ignored leftovers); `task check:lifecycle`
+  added (destructive-then-restoring, needs network after purge, not part
+  of `test`); README lifecycle docs rewritten; 215 harness tests. One-time
+  migration removed ~330 MB of stale orphaned caches (.cache dirs, old
+  cargo targets).
 - Untracked files at repo root to leave alone: `parser-plan.md` and the raw
   `www.newworld.co.nz_...html` capture (original of the Phase 4 fixture).
 
@@ -381,20 +390,31 @@ instead of producing a warning.
 
 ## Phase 7 — Repair lifecycle state ownership
 
-- [ ] Define `HARNESS_DIR` once at each language root.
-- [ ] Derive and export:
-  - [ ] `HARNESS_CACHE_DIR`.
-  - [ ] `HARNESS_OUTPUT_DIR`.
-  - [ ] `UV_CACHE_DIR`.
-  - [ ] `CARGO_TARGET_DIR` where appropriate.
-- [ ] Stop child projects from independently defaulting to `.cache/uv`.
-- [ ] Ensure:
-  - [ ] `clean` removes outputs but keeps caches and installed dependencies.
-  - [ ] `purge` removes all repository-owned outputs, caches, and installed
-    dependencies.
-- [ ] Add lifecycle tests that snapshot ignored state before and after `clean`
-  and `purge`.
-- [ ] Make README lifecycle documentation match tested behavior.
+- [x] Define `HARNESS_DIR` once at each language root. (Exported once in each
+  top-level lifecycle.sh; children inherit via delegation or derive the
+  identical value from their parent dir via one shared fallback rule.)
+- [x] Derive and export:
+  - [x] `HARNESS_CACHE_DIR`.
+  - [x] `HARNESS_OUTPUT_DIR`.
+  - [x] `UV_CACHE_DIR`. ($HARNESS_CACHE_DIR/uv — python and test-harness.)
+  - [x] `CARGO_TARGET_DIR` where appropriate.
+    ($HARNESS_CACHE_DIR/cargo-target, shared library+component; documented
+    tradeoff: cargo clean in purge clears both crates' caches.)
+- [x] Stop child projects from independently defaulting to `.cache/uv`.
+  (grep for 'cache/uv' across lifecycle.sh/Taskfile.yml/justfile: zero.)
+- [x] Ensure:
+  - [x] `clean` removes outputs but keeps caches and installed dependencies.
+  - [x] `purge` removes all repository-owned outputs, caches, and installed
+    dependencies. (Previously leaked: src/__pycache__, generated
+    src/bindings.rs, .task/ checksum dirs, rust purge was clean-only.)
+- [x] Add lifecycle tests that snapshot ignored state before and after `clean`
+  and `purge`. (Always-on: behavioral-parity fixture tests incl. HARNESS_DIR
+  override relocation. On-demand real tree: `task check:lifecycle` /
+  `just check-lifecycle` — snapshot → clean-verify → purge-verify-zero-
+  leftovers → setup+build restore; destructive-then-restoring, not in
+  `test`.)
+- [x] Make README lifecycle documentation match tested behavior. (HARNESS_*
+  variables table and per-directory clean/purge tables.)
 
 Done when no repository-owned `.cache/uv`, `.venv`, `node_modules`, target,
 binding, transpiled, or WASM artifacts survive `purge`.

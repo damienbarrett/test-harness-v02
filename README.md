@@ -39,19 +39,40 @@ task clean
 task purge
 ```
 
-`build` compiles each language's WASM component (`{lang}/component/task-component.wasm`) and is safe to run repeatedly; nothing else in the lifecycle assumes a `.wasm` artifact already exists from a prior manual build. `task wasm:test` and `task test` both depend on `build`, so a clean checkout with no `.wasm` files still passes. `clean` removes generated outputs while preserving dependency/setup state. `purge` removes generated outputs and repo-owned setup artifacts, so the next `setup` may be slower.
+`build` compiles each language's WASM component (`{lang}/component/task-component.wasm`) and is safe to run repeatedly; nothing else in the lifecycle assumes a `.wasm` artifact already exists from a prior manual build. `task wasm:test` and `task test` both depend on `build`, so a clean checkout with no `.wasm` files still passes.
 
-Ignored workspace state is organized under `.harness/` by the lifecycle stage that removes it:
+`clean` and `purge` have distinct, tested contracts (constitution.md §4):
 
-```text
-.harness/
-  outputs/  # removed by clean and purge
-  cache/    # removed by purge
-```
+- **`clean`** removes *generated outputs only*: built `.wasm` artifacts, Python's `bindings/`, JavaScript's `transpiled/`, coverage artifacts (`.coverage`, `htmlcov/`, `coverage/`), `__pycache__`/`.pytest_cache`, and the contents of `$HARNESS_OUTPUT_DIR`. It preserves caches and installed dependencies: `.venv`, `node_modules`, cargo's build cache, and the `uv` package cache.
+- **`purge`** removes *everything repository-owned*: every output `clean` removes, plus `.venv`, `node_modules`, cargo's target directory, `$HARNESS_DIR` (cache and outputs together, including the `uv` cache), and Task's own `.task/` checksum cache. After `task purge` at the repo root, `git status --ignored --porcelain` shows no repository-owned ignored artifact anywhere - verified on demand by `task check:lifecycle` (see below).
 
-Lifecycle state names should describe the lifecycle step that owns removal. Build and report artifacts belong under `outputs`; dependency and setup reuse state belongs under `cache`.
+### State ownership: the `HARNESS_*` variables
 
-Python and test-harness lifecycle commands use `.harness/cache` by default instead of the host-global uv cache under the user's home directory. Override with `HARNESS_DIR=/path/to/state` or `UV_CACHE_DIR=/path/to/cache` when needed.
+Each of `python/`, `javascript/`, `rust/`, and `test-harness/` defines and exports the same variables exactly once, in that directory's own `lifecycle.sh` (its language/harness root). `library/` and `component/` sub-lifecycles inherit these exported values when invoked through their parent; when invoked directly (e.g. `cd python/component && task test`, with no `HARNESS_*` pre-exported) they derive the identical values themselves via one shared fallback rule - `HARNESS_DIR` relative to their own parent directory, then the same derivation chain. No `library/`/`component/` script defaults any of these independently.
+
+| Variable | Default | Removed by | Purpose |
+| --- | --- | --- | --- |
+| `HARNESS_DIR` | `<dir>/.harness` | `purge` (whole) | Root of all lifecycle-owned state for that directory. |
+| `HARNESS_CACHE_DIR` | `$HARNESS_DIR/cache` | `purge` only | Package-manager/build caches. |
+| `HARNESS_OUTPUT_DIR` | `$HARNESS_DIR/outputs` | `clean` and `purge` | Build/report artifacts. |
+| `UV_CACHE_DIR` (python, test-harness) | `$HARNESS_CACHE_DIR/uv` | `purge` (via `HARNESS_DIR`) | Shared `uv` package cache - `library` and `component` no longer default this to a local `.cache/uv`. |
+| `CARGO_TARGET_DIR` (rust) | `$HARNESS_CACHE_DIR/cargo-target` | `purge` (`cargo clean`) | Cargo build cache, shared between `rust/library` and `rust/component`; `clean` never touches it. |
+
+All four are overridable by exporting them before invoking `task`/`just` - the Apple-container scripts under `container/` already do this, pointing them at a container-local scratch path instead of the checkout.
+
+### What `clean`/`purge` remove, by directory
+
+| Directory | `clean` removes | `purge` additionally removes |
+| --- | --- | --- |
+| `python/library`, `javascript/library` | language-appropriate output artifacts (`__pycache__`, `.coverage`, `htmlcov`, `coverage/`, etc.) | `.venv` / `node_modules` |
+| `python/component`, `javascript/component` | the above, plus the built `.wasm` and `bindings/`/`transpiled/` | `.venv` / `node_modules` |
+| `rust/library` | nothing (no standalone output; its only state is the shared `$CARGO_TARGET_DIR` cache) | `cargo clean` (clears `$CARGO_TARGET_DIR`; shared with `rust/component`, so this also clears its cache) |
+| `rust/component` | the copied `task-component.wasm` | `cargo clean` (same shared-cache tradeoff) |
+| `python/`, `javascript/`, `rust/` (language root) | that language's slice of `$HARNESS_OUTPUT_DIR` | `$HARNESS_DIR` (cache + outputs), plus `.task/` |
+| `test-harness/` | `__pycache__`, `.coverage`, `htmlcov`, etc. | `.venv`, `$HARNESS_DIR`, `.task/` |
+| repo root | legacy `.output`/`output` (unused by any current recipe) | same |
+
+`task check:lifecycle` / `just check-lifecycle` is an on-demand, **destructive-then-restoring** verification (deliberately not part of `task test`): it runs `task clean` and asserts outputs are gone while caches/dependencies survive, runs `task purge` and asserts zero repository-owned ignored artifacts remain anywhere in the tree, then runs `task setup && task build` to leave the checkout usable again. It needs network access after the purge step to refetch `uv`/`npm`/`cargo` dependencies.
 
 `common/` is a source-contract repository for shared schemas, WIT, and fixtures. It is consumed by lifecycle repositories but does not expose lifecycle commands.
 

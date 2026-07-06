@@ -143,6 +143,11 @@ tasks:
     cmds:
       - ./lifecycle.sh contracts:check
 
+  check:lifecycle:
+    desc: Verify clean/purge state ownership (destructive, restores via setup+build after; not part of test)
+    cmds:
+      - ./lifecycle.sh check:lifecycle
+
   image:bootstrap:
     desc: Install container/image tools in the current checked-out repo environment
     cmds:

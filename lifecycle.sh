@@ -29,6 +29,95 @@ lang_step() {
   (cd "$1" && nix develop --command task "$2")
 }
 
+# check:lifecycle / check-lifecycle (Phase 7 of docs/refactoring-plan.md): an
+# on-demand, DESTRUCTIVE-then-restoring verification that `clean` and `purge`
+# actually honor the state-ownership contract documented in README.md's
+# Lifecycle section - `clean` removes generated outputs but preserves caches
+# and installed dependencies; `purge` removes every repository-owned ignored
+# artifact. Runs `task clean`, `task purge`, then `task setup && task build`
+# against THIS checkout, so it needs network access after the purge step to
+# refetch uv/npm/cargo dependencies. Intentionally not part of root `test`
+# (too slow and too destructive for a routine gate).
+#
+# `.claude/` is excluded from the ignored-artifact scan: it holds Claude Code
+# session/runtime state tracked via `.git/info/exclude` (e.g.
+# scheduled_tasks.lock), not anything any lifecycle verb here creates or
+# owns.
+cmd_check_lifecycle() {
+  local fail=0
+  local path snapshot
+
+  echo "== check:lifecycle =="
+  echo "Destructive, then restoring: runs 'task clean', 'task purge', then"
+  echo "'task setup && task build' against this checkout. May need network"
+  echo "access after purge to refetch dependencies."
+  echo
+
+  echo "-- step 1/5: task clean --"
+  task clean
+
+  echo
+  echo "-- step 2/5: verifying clean removed outputs and kept caches/deps --"
+  local must_be_gone_after_clean="
+    python/component/task-component.wasm
+    python/component/bindings
+    javascript/component/task-component.wasm
+    javascript/component/transpiled
+    rust/component/task-component.wasm
+  "
+  for path in $must_be_gone_after_clean; do
+    if [ -e "$path" ]; then
+      echo "FAIL: '$path' should have been removed by clean" >&2
+      fail=1
+    fi
+  done
+
+  local must_survive_clean="
+    python/library/.venv
+    python/component/.venv
+    javascript/library/node_modules
+    javascript/component/node_modules
+    rust/.harness/cache/cargo-target
+    test-harness/.venv
+  "
+  for path in $must_survive_clean; do
+    if [ ! -e "$path" ]; then
+      echo "FAIL: '$path' should survive clean (cache/dependency state, not output)" >&2
+      fail=1
+    fi
+  done
+  if [ "$fail" -eq 0 ]; then
+    echo "OK: outputs gone, caches/deps intact."
+  fi
+
+  echo
+  echo "-- step 3/5: task purge --"
+  task purge
+
+  echo
+  echo "-- step 4/5: verifying purge left zero repository-owned ignored artifacts --"
+  snapshot="$(git status --ignored --porcelain=v1 | grep '^!! ' | grep -v '\.claude/' || true)"
+  if [ -n "$snapshot" ]; then
+    echo "FAIL: repository-owned ignored artifacts remain after purge:" >&2
+    echo "$snapshot" >&2
+    fail=1
+  else
+    echo "OK: no repository-owned ignored artifacts remain."
+  fi
+
+  echo
+  echo "-- step 5/5: restoring the tree: task setup && task build --"
+  task setup
+  task build
+
+  echo
+  if [ "$fail" -ne 0 ]; then
+    echo "check:lifecycle: FAIL" >&2
+    return 1
+  fi
+  echo "check:lifecycle: PASS"
+}
+
 verb="${1:-}"
 if [ "$#" -gt 0 ]; then
   shift
@@ -45,15 +134,21 @@ case "$verb" in
     ;;
 
   wasm:test)
-    (cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./run-wasm-tests.py')
+    # UV_CACHE_DIR is derived once, inside test-harness/lifecycle.sh (Phase 7
+    # of docs/refactoring-plan.md) - not duplicated here.
+    (cd test-harness && nix develop --command ./lifecycle.sh wasm-test)
     ;;
 
   check:runners)
-    (cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./check-runner-parity.py')
+    (cd test-harness && nix develop --command ./lifecycle.sh check-runners)
     ;;
 
   contracts:check)
-    (cd test-harness && nix develop --command bash -c 'UV_CACHE_DIR="${UV_CACHE_DIR:-.cache/uv}" ./check-contracts.py')
+    (cd test-harness && nix develop --command ./lifecycle.sh check-contracts)
+    ;;
+
+  check:lifecycle)
+    cmd_check_lifecycle
     ;;
 
   python-setup) lang_step python setup ;;

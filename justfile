@@ -38,6 +38,10 @@ check-runners:
 contracts-check:
     ./lifecycle.sh contracts:check
 
+# Verify clean/purge state ownership (destructive, restores via setup+build after; not part of test)
+check-lifecycle:
+    ./lifecycle.sh check:lifecycle
+
 # Install container/image tools in the current checked-out repo environment
 image-bootstrap:
     ./lifecycle.sh image:bootstrap

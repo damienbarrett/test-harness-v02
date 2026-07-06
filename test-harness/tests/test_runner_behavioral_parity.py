@@ -171,9 +171,33 @@ def make_fixture_project(directory: Path) -> Path:
     return directory
 
 
-def run_runner(runner: str, verb: str, cwd: Path, extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+# This test process itself runs as a child of test-harness/lifecycle.sh's
+# `test` verb, which unconditionally exports HARNESS_DIR/HARNESS_CACHE_DIR/
+# HARNESS_OUTPUT_DIR/UV_CACHE_DIR before invoking pytest. Left alone, those
+# ambient values would leak into the unrelated fixture projects spawned
+# below and be (correctly, by design) treated as caller-provided overrides -
+# masking the fixture's own default-derivation behavior. Tests that need a
+# genuinely clean environment clear these explicitly via `clear_env_vars`.
+HARNESS_ENV_VARS = (
+    "HARNESS_DIR",
+    "HARNESS_CACHE_DIR",
+    "HARNESS_OUTPUT_DIR",
+    "UV_CACHE_DIR",
+    "CARGO_TARGET_DIR",
+)
+
+
+def run_runner(
+    runner: str,
+    verb: str,
+    cwd: Path,
+    extra_env: dict[str, str] | None = None,
+    clear_env_vars: tuple[str, ...] = (),
+) -> subprocess.CompletedProcess:
     binary = _require_binary(runner)
     env = dict(os.environ)
+    for key in clear_env_vars:
+        env.pop(key, None)
     if extra_env:
         env.update(extra_env)
     return subprocess.run(
@@ -312,3 +336,159 @@ def test_failing_dependency_prevents_dependent_verb_on_both_runners(tmp_path):
     # The dependent verb's own body must never have run.
     assert not (task_dir / "depfail_dependent.marker").exists()
     assert not (just_dir / "depfail_dependent.marker").exists()
+
+
+# --- HARNESS_* derivation rule (Phase 7 of docs/refactoring-plan.md) -------
+#
+# The fixture below follows the exact same derivation rule as every real
+# lifecycle.sh in this repo (see e.g. python/lifecycle.sh): HARNESS_DIR
+# defaults to `<project>/.harness`, overridable by env; HARNESS_CACHE_DIR and
+# HARNESS_OUTPUT_DIR default to subdirectories of it. `build` writes a cache
+# marker and an output marker into the derived directories; `clean` removes
+# only the output marker; `purge` (which depends on `clean` natively in both
+# runners, mirroring every real lifecycle.sh pair in this repo) removes the
+# whole HARNESS_DIR, cache included.
+
+LIFECYCLE_SH_HARNESS_DERIVED = """\
+#!/usr/bin/env bash
+set -eu
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+export HARNESS_DIR="${HARNESS_DIR:-$script_dir/.harness}"
+export HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-$HARNESS_DIR/cache}"
+export HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-$HARNESS_DIR/outputs}"
+
+cmd_build() {
+  mkdir -p "$HARNESS_OUTPUT_DIR" "$HARNESS_CACHE_DIR"
+  echo "built" > "$HARNESS_OUTPUT_DIR/build.marker"
+  : > "$HARNESS_CACHE_DIR/cache.marker"
+}
+
+cmd_clean() {
+  rm -f "$HARNESS_OUTPUT_DIR/build.marker"
+}
+
+cmd_purge() {
+  rm -rf "$HARNESS_DIR"
+}
+
+verb="${1:-}"
+case "$verb" in
+  build) cmd_build ;;
+  clean) cmd_clean ;;
+  purge) cmd_purge ;;
+  *)
+    echo "lifecycle.sh: unknown verb '$verb'" >&2
+    exit 64
+    ;;
+esac
+"""
+
+TASKFILE_YML_HARNESS_DERIVED = """\
+version: "3"
+
+tasks:
+  build:
+    cmds:
+      - ./lifecycle.sh build
+
+  clean:
+    cmds:
+      - ./lifecycle.sh clean
+
+  purge:
+    deps: [clean]
+    cmds:
+      - ./lifecycle.sh purge
+"""
+
+JUSTFILE_HARNESS_DERIVED = """\
+build:
+    ./lifecycle.sh build
+
+clean:
+    ./lifecycle.sh clean
+
+purge: clean
+    ./lifecycle.sh purge
+"""
+
+
+def make_harness_derived_fixture_project(directory: Path) -> Path:
+    """Write a lifecycle.sh + Taskfile.yml + justfile trio whose state is
+    derived from HARNESS_DIR exactly like every real lifecycle.sh in this
+    repo, into ``directory``."""
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "Taskfile.yml").write_text(TASKFILE_YML_HARNESS_DERIVED)
+    (directory / "justfile").write_text(JUSTFILE_HARNESS_DERIVED)
+    script = directory / "lifecycle.sh"
+    script.write_text(LIFECYCLE_SH_HARNESS_DERIVED)
+    script.chmod(0o755)
+    return directory
+
+
+def test_default_harness_dir_places_state_under_dot_harness_on_both_runners(tmp_path):
+    task_dir = make_harness_derived_fixture_project(tmp_path / "task-proj")
+    just_dir = make_harness_derived_fixture_project(tmp_path / "just-proj")
+
+    task_result = run_runner("task", "build", task_dir, clear_env_vars=HARNESS_ENV_VARS)
+    just_result = run_runner("just", "build", just_dir, clear_env_vars=HARNESS_ENV_VARS)
+
+    assert task_result.returncode == 0, task_result.stderr
+    assert just_result.returncode == 0, just_result.stderr
+    for project in (task_dir, just_dir):
+        assert (project / ".harness" / "outputs" / "build.marker").exists()
+        assert (project / ".harness" / "cache" / "cache.marker").exists()
+
+
+def test_overriding_harness_dir_relocates_state_on_both_runners(tmp_path):
+    task_dir = make_harness_derived_fixture_project(tmp_path / "task-proj")
+    just_dir = make_harness_derived_fixture_project(tmp_path / "just-proj")
+    relocated = tmp_path / "elsewhere" / "harness-state"
+    extra = {"HARNESS_DIR": str(relocated)}
+
+    task_result = run_runner("task", "build", task_dir, extra_env=extra, clear_env_vars=HARNESS_ENV_VARS)
+    just_result = run_runner("just", "build", just_dir, extra_env=extra, clear_env_vars=HARNESS_ENV_VARS)
+
+    assert task_result.returncode == 0, task_result.stderr
+    assert just_result.returncode == 0, just_result.stderr
+    # State lands under the overridden HARNESS_DIR instead of the project's
+    # own default `.harness/`.
+    assert (relocated / "outputs" / "build.marker").exists()
+    assert (relocated / "cache" / "cache.marker").exists()
+    assert not (task_dir / ".harness").exists()
+    assert not (just_dir / ".harness").exists()
+
+
+def test_harness_clean_keeps_cache_purge_removes_all_on_both_runners(tmp_path):
+    task_dir = make_harness_derived_fixture_project(tmp_path / "task-proj")
+    just_dir = make_harness_derived_fixture_project(tmp_path / "just-proj")
+
+    for runner_name, project in (("task", task_dir), ("just", just_dir)):
+        result = run_runner(runner_name, "build", project, clear_env_vars=HARNESS_ENV_VARS)
+        assert result.returncode == 0, result.stderr
+
+    for project in (task_dir, just_dir):
+        assert (project / ".harness" / "outputs" / "build.marker").exists()
+        assert (project / ".harness" / "cache" / "cache.marker").exists()
+
+    task_clean = run_runner("task", "clean", task_dir, clear_env_vars=HARNESS_ENV_VARS)
+    just_clean = run_runner("just", "clean", just_dir, clear_env_vars=HARNESS_ENV_VARS)
+    assert task_clean.returncode == 0, task_clean.stderr
+    assert just_clean.returncode == 0, just_clean.stderr
+
+    for project in (task_dir, just_dir):
+        # clean removes the output...
+        assert not (project / ".harness" / "outputs" / "build.marker").exists()
+        # ...but preserves the cache.
+        assert (project / ".harness" / "cache" / "cache.marker").exists()
+
+    task_purge = run_runner("task", "purge", task_dir, clear_env_vars=HARNESS_ENV_VARS)
+    just_purge = run_runner("just", "purge", just_dir, clear_env_vars=HARNESS_ENV_VARS)
+    assert task_purge.returncode == 0, task_purge.stderr
+    assert just_purge.returncode == 0, just_purge.stderr
+
+    for project in (task_dir, just_dir):
+        # purge (which depends on clean natively) removes the whole
+        # HARNESS_DIR, cache included.
+        assert not (project / ".harness").exists()

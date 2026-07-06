@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 # Canonical lifecycle implementation for javascript/component/.
+#
+# State ownership (Phase 7 of docs/refactoring-plan.md): HARNESS_DIR and its
+# derived cache/output variables are defined once at the language root
+# (javascript/lifecycle.sh) and inherited here when this script runs as that
+# script's delegate. For direct invocation (`cd javascript/component && task
+# test`), this is the one shared fallback rule used by every child
+# lifecycle.sh in this repo: derive HARNESS_DIR relative to the parent
+# (language root) directory, then apply the identical derivation chain.
 set -eu
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+
+export HARNESS_DIR="${HARNESS_DIR:-$(cd "$script_dir/.." && pwd)/.harness}"
+export HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-$HARNESS_DIR/cache}"
+export HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-$HARNESS_DIR/outputs}"
 
 wit_path="../../common/wit/tasks.wit"
 world_name="task-component"
@@ -43,7 +57,7 @@ cmd_clean() {
 }
 
 cmd_purge() {
-  rm -rf node_modules
+  rm -rf node_modules .task
 }
 
 verb="${1:-}"

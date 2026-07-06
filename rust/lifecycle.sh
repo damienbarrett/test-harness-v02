@@ -5,10 +5,18 @@
 # compose library:*/component:* recipes, which already match byte-for-byte
 # between Taskfile.yml and justfile) - only clean/purge have real,
 # directory-owned command-body content, so only those verbs are implemented
-# here. This is also where the pre-Phase-6 drift lived: the Taskfile side
-# additionally removed this language's slice of the shared .harness
-# cache/output directories on purge (and outputs on clean); the justfile side
-# did not. Both runners now call this script, so behavior is identical.
+# here.
+#
+# State ownership (Phase 7 of docs/refactoring-plan.md): this is the ONE
+# place rust/'s HARNESS_DIR and its derived cache/output/CARGO_TARGET_DIR
+# variables are defined and exported. library/ and component/ inherit these
+# exported values when invoked through the `delegate` function below (they
+# run as child processes of this script); for direct invocation
+# (e.g. `cd rust/component && task test`) each child's own lifecycle.sh
+# derives the identical values itself via the same fallback rule, relative
+# to its own parent directory. CARGO_TARGET_DIR is deliberately shared
+# between rust/library and rust/component (see their lifecycle.sh for the
+# build-cache-sharing tradeoff this implies for `cargo clean`/purge).
 #
 # Sub-repo isolation: this script only reaches into its own subtree
 # (library/, component/) and common/; never a sibling language directory.
@@ -17,15 +25,23 @@ set -eu
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 lang="rust"
 
+export HARNESS_DIR="${HARNESS_DIR:-$script_dir/.harness}"
+export HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-$HARNESS_DIR/cache}"
+export HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-$HARNESS_DIR/outputs}"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$HARNESS_CACHE_DIR/cargo-target}"
+
 cmd_clean() {
-  rm -rf "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-$script_dir/.harness}/outputs}/$lang"
+  rm -rf "$HARNESS_OUTPUT_DIR/$lang"
 }
 
+# Removes the whole of $HARNESS_DIR (covering the default case, where it is
+# unique to this language, and which already contains CARGO_TARGET_DIR under
+# its cache/ slice) plus this language's namespaced slice of
+# HARNESS_CACHE_DIR/HARNESS_OUTPUT_DIR (covering the case where HARNESS_DIR
+# has been overridden to a directory shared across languages, e.g. by the
+# Apple-container scripts under container/), and Task's own checksum cache.
 cmd_purge() {
-  rm -rf \
-    "$script_dir/.harness" \
-    "${HARNESS_CACHE_DIR:-${HARNESS_DIR:-$script_dir/.harness}/cache}/$lang" \
-    "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-$script_dir/.harness}/outputs}/$lang"
+  rm -rf "$HARNESS_DIR" "$HARNESS_CACHE_DIR/$lang" "$HARNESS_OUTPUT_DIR/$lang" "$script_dir/.task"
 }
 
 # library:*/component:* delegate verbs: run the child directory's own `task`

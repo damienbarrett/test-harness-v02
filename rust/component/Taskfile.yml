@@ -41,3 +41,4 @@ tasks:
     desc: Remove generated outputs and setup artifacts
     cmds:
       - task: clean
+      - ./lifecycle.sh purge

@@ -24,3 +24,4 @@ clean:
 
 # Remove generated outputs and setup artifacts
 purge: clean
+    ./lifecycle.sh purge

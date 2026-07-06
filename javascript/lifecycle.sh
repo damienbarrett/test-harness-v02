@@ -5,10 +5,18 @@
 # compose library:*/component:* recipes, which already match byte-for-byte
 # between Taskfile.yml and justfile) - only clean/purge have real,
 # directory-owned command-body content, so only those verbs are implemented
-# here. This is also where the pre-Phase-6 drift lived: the Taskfile side
-# additionally removed this language's slice of the shared .harness
-# cache/output directories on purge (and outputs on clean); the justfile side
-# did not. Both runners now call this script, so behavior is identical.
+# here.
+#
+# State ownership (Phase 7 of docs/refactoring-plan.md): this is the ONE
+# place javascript/'s HARNESS_DIR and its derived cache/output variables are
+# defined and exported (JavaScript has no package-manager cache directory
+# equivalent to UV_CACHE_DIR/CARGO_TARGET_DIR that needs relocating - `npm
+# ci` uses node_modules/ directly, which purge already removes below).
+# library/ and component/ inherit these exported values when invoked through
+# the `delegate` function below; for direct invocation
+# (e.g. `cd javascript/component && task test`) each child's own
+# lifecycle.sh derives the identical values itself via the same fallback
+# rule, relative to its own parent directory.
 #
 # Sub-repo isolation: this script only reaches into its own subtree
 # (library/, component/) and common/; never a sibling language directory.
@@ -17,15 +25,21 @@ set -eu
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 lang="javascript"
 
+export HARNESS_DIR="${HARNESS_DIR:-$script_dir/.harness}"
+export HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-$HARNESS_DIR/cache}"
+export HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-$HARNESS_DIR/outputs}"
+
 cmd_clean() {
-  rm -rf "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-$script_dir/.harness}/outputs}/$lang"
+  rm -rf "$HARNESS_OUTPUT_DIR/$lang"
 }
 
+# Removes the whole of $HARNESS_DIR (covering the default case, where it is
+# unique to this language) plus this language's namespaced slice of
+# HARNESS_CACHE_DIR/HARNESS_OUTPUT_DIR (covering the case where HARNESS_DIR
+# has been overridden to a directory shared across languages, e.g. by the
+# Apple-container scripts under container/), and Task's own checksum cache.
 cmd_purge() {
-  rm -rf \
-    "$script_dir/.harness" \
-    "${HARNESS_CACHE_DIR:-${HARNESS_DIR:-$script_dir/.harness}/cache}/$lang" \
-    "${HARNESS_OUTPUT_DIR:-${HARNESS_DIR:-$script_dir/.harness}/outputs}/$lang"
+  rm -rf "$HARNESS_DIR" "$HARNESS_CACHE_DIR/$lang" "$HARNESS_OUTPUT_DIR/$lang" "$script_dir/.task"
 }
 
 # library:*/component:* delegate verbs: run the child directory's own `task`

@@ -116,12 +116,22 @@ class TestCase:
 
 @dataclass(frozen=True)
 class TestSuite:
-    """A discovered ``*.test.json`` suite and its path-derived identity."""
+    """A discovered ``*.test.json`` suite and its path-derived identity.
+
+    ``targets`` mirrors the suite's optional ``targets`` array (execution
+    metadata, e.g. ``("native",)``). ``None`` means the suite declares no
+    restriction and runs against every target that can execute it; a tuple
+    excluding ``"component"`` tells the WASM harness to announce an
+    explicit skip for the suite (see ``harness.cli``). Unknown target
+    values never get this far -- the suite-format schema's enum rejects
+    them during contract validation.
+    """
 
     path: Path
     interface: str
     function: str
     tests: list[TestCase] = field(default_factory=list)
+    targets: tuple[str, ...] | None = None
 
 
 def discover_test_suites(root: Path) -> list[TestSuite]:
@@ -147,5 +157,9 @@ def discover_test_suites(root: Path) -> list[TestSuite]:
             )
             for case in data["tests"]
         ]
-        suites.append(TestSuite(path=path, interface=interface, function=function, tests=tests))
+        raw_targets = data.get("targets")
+        targets = tuple(raw_targets) if raw_targets is not None else None
+        suites.append(
+            TestSuite(path=path, interface=interface, function=function, tests=tests, targets=targets)
+        )
     return suites

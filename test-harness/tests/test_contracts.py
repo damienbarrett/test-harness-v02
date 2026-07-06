@@ -164,6 +164,44 @@ def test_valid_targets_value_is_accepted(tmp_path):
     assert validate_contracts(tmp_path) == []
 
 
+def test_empty_targets_array_is_a_schema_violation(tmp_path):
+    write_world(tmp_path, "task-component")
+    write_suite_schema(tmp_path)
+    d = tmp_path / "common" / "functions" / "task-collections"
+    d.mkdir(parents=True)
+    (d / "count-tasks.test.json").write_text(
+        json.dumps(
+            {
+                "function": "count-tasks",
+                "targets": [],
+                "tests": [{"description": "d", "input": {}, "expected": 0}],
+            }
+        )
+    )
+    errors = validate_contracts(tmp_path)
+    assert len(errors) == 1
+    assert "suite schema violation" in errors[0]
+
+
+def test_duplicate_targets_are_a_schema_violation(tmp_path):
+    write_world(tmp_path, "task-component")
+    write_suite_schema(tmp_path)
+    d = tmp_path / "common" / "functions" / "task-collections"
+    d.mkdir(parents=True)
+    (d / "count-tasks.test.json").write_text(
+        json.dumps(
+            {
+                "function": "count-tasks",
+                "targets": ["native", "native"],
+                "tests": [{"description": "d", "input": {}, "expected": 0}],
+            }
+        )
+    )
+    errors = validate_contracts(tmp_path)
+    assert len(errors) == 1
+    assert "suite schema violation" in errors[0]
+
+
 # --- function-name / interface / WIT-declaration checks -------------------
 
 
@@ -267,7 +305,127 @@ def test_duplicate_case_descriptions_are_reported(tmp_path):
     assert "same" in errors[0]
 
 
-# --- fixture existence / confinement --------------------------------------
+# --- fixture resolution (before schema validation) -------------------------
+
+
+def write_page_contract(tmp_path, html_schema: dict | None = None) -> None:
+    """A ``pages/parse-page`` contract whose single ``html`` parameter is a
+    plain WIT ``string`` -- the schema can only be satisfied by a case whose
+    ``$fixture`` descriptor was materialized to text BEFORE validation."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface pages {\n"
+        "  parse-page: func(html: string) -> string;\n"
+        "}\n\n"
+        "world w {\n  export pages;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    write_function_schema(
+        tmp_path, "pages", "parse-page",
+        parameters={
+            "type": "object",
+            "properties": {"html": html_schema or {"type": "string"}},
+            "required": ["html"],
+            "additionalProperties": False,
+        },
+        returns={"type": "string"},
+    )
+
+
+def test_fixture_input_is_materialized_before_parameter_schema_validation(tmp_path):
+    """The parameter schema requires ``html`` to be a string; the raw
+    descriptor (an object) could never satisfy it. Passing proves the
+    MATERIALIZED input is what gets validated (docs/refactoring-plan.md
+    Phase 4)."""
+    write_page_contract(tmp_path)
+    fixtures = tmp_path / "common" / "fixtures" / "html-parser"
+    fixtures.mkdir(parents=True)
+    (fixtures / "page.html").write_text("<html></html>")
+    write_suite(
+        tmp_path, "pages", "parse-page",
+        [
+            {
+                "description": "materialized",
+                "input": {"html": {"$fixture": "common/fixtures/html-parser/page.html"}},
+                "expected": "ok",
+            }
+        ],
+    )
+    assert validate_contracts(tmp_path) == []
+
+
+def test_materialized_fixture_input_violating_the_schema_is_reported(tmp_path):
+    write_page_contract(tmp_path, html_schema={"type": "string", "maxLength": 5})
+    fixtures = tmp_path / "common" / "fixtures" / "html-parser"
+    fixtures.mkdir(parents=True)
+    (fixtures / "page.html").write_text("<html>much longer than five characters</html>")
+    write_suite(
+        tmp_path, "pages", "parse-page",
+        [
+            {
+                "description": "too long",
+                "input": {"html": {"$fixture": "common/fixtures/html-parser/page.html"}},
+                "expected": "ok",
+            }
+        ],
+    )
+    errors = validate_contracts(tmp_path)
+    assert len(errors) == 1
+    assert "case 'too long': input invalid" in errors[0]
+
+
+def test_fixture_resolution_failure_is_a_contract_validation_error(tmp_path):
+    write_page_contract(tmp_path)
+    fixtures = tmp_path / "common" / "fixtures" / "html-parser"
+    fixtures.mkdir(parents=True)
+    (fixtures / "page.html").write_text("<html></html>")
+    write_suite(
+        tmp_path, "pages", "parse-page",
+        [
+            {
+                "description": "bad compression",
+                "input": {
+                    "html": {
+                        "$fixture": "common/fixtures/html-parser/page.html",
+                        "compression": "zstd",
+                    }
+                },
+                "expected": "ok",
+            }
+        ],
+    )
+    errors = validate_contracts(tmp_path)
+    assert len(errors) == 1
+    assert "case 'bad compression'" in errors[0]
+    assert "unsupported compression 'zstd'" in errors[0]
+
+
+def test_unknown_descriptor_key_is_a_contract_validation_error(tmp_path):
+    write_page_contract(tmp_path)
+    fixtures = tmp_path / "common" / "fixtures" / "html-parser"
+    fixtures.mkdir(parents=True)
+    (fixtures / "page.html").write_text("<html></html>")
+    write_suite(
+        tmp_path, "pages", "parse-page",
+        [
+            {
+                "description": "typo",
+                "input": {
+                    "html": {
+                        "$fixture": "common/fixtures/html-parser/page.html",
+                        "encodings": "utf-8",
+                    }
+                },
+                "expected": "ok",
+            }
+        ],
+    )
+    errors = validate_contracts(tmp_path)
+    assert len(errors) == 1
+    assert "case 'typo'" in errors[0]
+    assert "unknown fixture descriptor key(s) ['encodings']" in errors[0]
 
 
 def test_fixture_reference_that_does_not_exist_is_reported(tmp_path):

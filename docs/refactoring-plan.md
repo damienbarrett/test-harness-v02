@@ -33,16 +33,22 @@ another agent can take over at any point.
   `common/schemas/test-suite.schema.json`; schemas carry repo-relative
   `$id`s resolved through a scan-built registry; u32 bounds on count-tasks
   returns; duplicated per-language schema-validation tests removed.
-- Phase 4 — IN PROGRESS (subagent): `harness/fixtures.py` recursive
-  `$fixture` resolver (gzip/utf-8, realpath containment under
-  `common/fixtures/`, `HARNESS_FIXTURE_MAX_BYTES` default 8 MiB),
-  resolution before validation and execution, `targets` semantics,
-  New World HTML capture copied to
-  `common/fixtures/html-parser/newworld-search-eggs.html.gz`. Note: the
-  full "same case drives native and WASM" demo is deferred until an
+- Phase 4 — DONE (commit titled "Add file-backed fixture support
+  (Phase 4)"). `harness/fixtures.py` is the single owner of `$fixture`
+  resolution (gzip/utf-8 only, explicit declarations, realpath containment
+  under `common/fixtures/`, `HARNESS_FIXTURE_MAX_BYTES` default 8 MiB,
+  bomb-safe incremental gzip); contracts.py materializes fixtures before
+  schema validation, cli.py before argument marshalling; `targets`
+  metadata: absent = unrestricted, unknown value = validation error,
+  component-excluding suites print an explicit SKIP. Real fixture:
+  `common/fixtures/html-parser/newworld-search-eggs.html.gz` (139258 B
+  from the 592574 B capture) with provenance README. 20 reusable
+  conformance cases live in `test-harness/tests/fixture_conformance.py`
+  for future native adapters (none built — no native suite consumes
+  fixtures yet; criterion documented in common/README.md). The full
+  "same case drives native and WASM" demo is deferred until an
   html-parser capability exists (the plan forbids starting the parser
-  before items 1–4 are complete); the machinery is proven by the
-  conformance suite plus a real-fixture integration test.
+  before items 1–4 are complete).
 - Untracked files at repo root to leave alone: `parser-plan.md` and the raw
   `www.newworld.co.nz_...html` capture (original of the Phase 4 fixture).
 
@@ -249,32 +255,35 @@ Allow fixture descriptors anywhere in test input values:
 }
 ```
 
-- [ ] Add a recursive fixture resolver to the harness.
-- [ ] Resolve fixture descriptors before validating the materialized input.
-- [ ] Support initially:
-  - [ ] Plain text.
-  - [ ] UTF-8 decoding.
-  - [ ] Gzip decompression.
-- [ ] Reject unsupported encodings and compression formats clearly.
-- [ ] Resolve paths relative to the repository root.
-- [ ] Require resolved paths to remain under `common/fixtures/`.
-- [ ] Reject traversal and symlink escapes.
-- [ ] Add configurable fixture-size limits to avoid accidental oversized
-  inputs.
-- [ ] Test missing, corrupt, non-UTF-8, traversal, and oversized fixtures.
-- [ ] Document when HTML should be inline versus stored externally:
-  - [ ] Small HTML fragments inline for focused behavior.
-  - [ ] Captured pages as external compressed regression fixtures.
-- [ ] Add explicit suite execution metadata where needed, for example:
+- [x] Add a recursive fixture resolver to the harness.
+- [x] Resolve fixture descriptors before validating the materialized input.
+- [x] Support initially:
+  - [x] Plain text.
+  - [x] UTF-8 decoding.
+  - [x] Gzip decompression.
+- [x] Reject unsupported encodings and compression formats clearly.
+- [x] Resolve paths relative to the repository root.
+- [x] Require resolved paths to remain under `common/fixtures/`.
+- [x] Reject traversal and symlink escapes.
+- [x] Add configurable fixture-size limits to avoid accidental oversized
+  inputs. (`HARNESS_FIXTURE_MAX_BYTES`, default 8 MiB, enforced on both
+  on-disk and decompressed size.)
+- [x] Test missing, corrupt, non-UTF-8, traversal, and oversized fixtures.
+- [x] Document when HTML should be inline versus stored externally:
+  - [x] Small HTML fragments inline for focused behavior.
+  - [x] Captured pages as external compressed regression fixtures.
+- [x] Add explicit suite execution metadata where needed, for example:
 
   ```json
   { "targets": ["native", "component"] }
   ```
 
-- [ ] Treat an unsupported target as a validation error, not an implicit skip.
-- [ ] Add thin fixture adapters for native language tests only if they still
-  need to execute independently of the central harness.
-- [ ] Test all adapters against the same fixture-resolution conformance cases.
+- [x] Treat an unsupported target as a validation error, not an implicit skip.
+- [x] Add thin fixture adapters for native language tests only if they still
+  need to execute independently of the central harness. (None needed yet —
+  no natively-run suite consumes `$fixture`; criterion in common/README.md.)
+- [x] Test all adapters against the same fixture-resolution conformance cases.
+  (Cases are reusable data in `test-harness/tests/fixture_conformance.py`.)
 
 Done when one external HTML fixture drives the same native and WASM contract
 case without exposing filesystem access to the parser.

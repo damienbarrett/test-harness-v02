@@ -425,3 +425,169 @@ def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(tmp_path, m
     assert "world=world-b  interface=iface-b  function=fn-b" in out
     assert seen_exports == ["common:a/iface-a", "common:b/iface-b"]
     assert "OK: 2/2 tests passed across 1 implementation(s)." in out
+
+
+# --- targets execution metadata (docs/refactoring-plan.md Phase 4) ----------
+
+
+def test_main_skips_native_only_suite_explicitly_without_counting_it(tmp_path, monkeypatch, capsys):
+    """A suite whose ``targets`` exclude ``component`` is never run against
+    components: it is announced with an explicit SKIP line (a declaration,
+    not a silent skip), counts as neither pass nor fail, and no component
+    is ever instantiated for it."""
+    write_world(tmp_path, "task-component")
+    write_suite_schema(tmp_path)
+    write_task_entity_schema(tmp_path)
+    write_function_schema(tmp_path, "task-collections", "count-tasks")
+    write_suite(
+        tmp_path, "task-collections", "count-tasks",
+        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
+        targets=["native"],
+    )
+    write_component(tmp_path, "python", "task-component")
+
+    def boom(engine, wasm_path):
+        raise AssertionError("a native-only suite must never instantiate a component")
+
+    monkeypatch.setattr(cli, "instantiate_component", boom)
+
+    exit_code = cli.main(tmp_path)
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert (
+        "SKIP (declared native-only): common/functions/task-collections/count-tasks.test.json"
+        in out
+    )
+    assert "OK: 0/0 tests passed" in out
+
+
+def test_main_runs_suite_whose_targets_include_component(tmp_path, monkeypatch, capsys):
+    write_world(tmp_path, "task-component")
+    write_suite_schema(tmp_path)
+    write_task_entity_schema(tmp_path)
+    write_function_schema(tmp_path, "task-collections", "count-tasks")
+    write_suite(
+        tmp_path, "task-collections", "count-tasks",
+        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
+        targets=["native", "component"],
+    )
+    write_component(tmp_path, "python", "task-component")
+
+    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(cli, "call_function", lambda *a, **k: 0)
+
+    exit_code = cli.main(tmp_path)
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "SKIP" not in out
+    assert "OK: 1/1 tests passed across 1 implementation(s)." in out
+
+
+def test_main_native_only_skip_does_not_affect_other_suites(tmp_path, monkeypatch, capsys):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface iface-a {\n  fn-a: func(x: string) -> string;\n}\n\n"
+        "interface iface-b {\n  fn-b: func(y: string) -> string;\n}\n\n"
+        "world w {\n  export iface-a;\n  export iface-b;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    string_params = {
+        "type": "object",
+        "properties": {"x": {"type": "string"}},
+        "required": ["x"],
+        "additionalProperties": False,
+    }
+    write_function_schema(
+        tmp_path, "iface-a", "fn-a", parameters=string_params, returns={"type": "string"}
+    )
+    write_function_schema(
+        tmp_path, "iface-b", "fn-b",
+        parameters={
+            "type": "object",
+            "properties": {"y": {"type": "string"}},
+            "required": ["y"],
+            "additionalProperties": False,
+        },
+        returns={"type": "string"},
+    )
+    write_suite(tmp_path, "iface-a", "fn-a", [{"description": "a", "input": {"x": "A"}, "expected": "A"}])
+    write_suite(
+        tmp_path, "iface-b", "fn-b",
+        [{"description": "b", "input": {"y": "B"}, "expected": "B"}],
+        targets=["native"],
+    )
+    write_component(tmp_path, "python", "w")
+
+    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(cli, "call_function", lambda store, instance, export, fn, args: args[0])
+
+    exit_code = cli.main(tmp_path)
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "SKIP (declared native-only): common/functions/iface-b/fn-b.test.json" in out
+    assert "function=fn-b" not in out
+    assert "OK: 1/1 tests passed across 1 implementation(s)." in out
+
+
+# --- fixture resolution before execution ------------------------------------
+
+
+def test_main_resolves_fixtures_before_building_call_arguments(tmp_path, monkeypatch, capsys):
+    """End to end: the component receives the DECODED fixture text as its
+    argument -- never the ``$fixture`` descriptor object
+    (docs/refactoring-plan.md Phase 4)."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface pages {\n"
+        "  parse-page: func(html: string) -> string;\n"
+        "}\n\n"
+        "world w {\n  export pages;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    write_function_schema(
+        tmp_path, "pages", "parse-page",
+        parameters={
+            "type": "object",
+            "properties": {"html": {"type": "string"}},
+            "required": ["html"],
+            "additionalProperties": False,
+        },
+        returns={"type": "string"},
+    )
+    fixtures = tmp_path / "common" / "fixtures" / "html-parser"
+    fixtures.mkdir(parents=True)
+    (fixtures / "page.html").write_text("<html>fixture</html>")
+    write_suite(
+        tmp_path, "pages", "parse-page",
+        [
+            {
+                "description": "fixture-driven",
+                "input": {"html": {"$fixture": "common/fixtures/html-parser/page.html"}},
+                "expected": "<html>fixture</html>",
+            }
+        ],
+    )
+    write_component(tmp_path, "python", "w")
+
+    captured: dict[str, list] = {}
+
+    def fake_call_function(store, instance, interface_export, function_name, args):
+        captured["args"] = args
+        return args[0]
+
+    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(cli, "call_function", fake_call_function)
+
+    exit_code = cli.main(tmp_path)
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert captured["args"] == ["<html>fixture</html>"]
+    assert "OK: 1/1 tests passed across 1 implementation(s)." in out

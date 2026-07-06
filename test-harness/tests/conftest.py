@@ -39,11 +39,20 @@ def write_world(root: Path, world_name: str, exported_interface: str = "task-col
     )
 
 
-def write_suite(root: Path, interface: str, function: str, tests: list[dict]) -> Path:
+def write_suite(
+    root: Path,
+    interface: str,
+    function: str,
+    tests: list[dict],
+    targets: list[str] | None = None,
+) -> Path:
     d = root / "common" / "functions" / interface
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"{function}.test.json"
-    path.write_text(json.dumps({"function": function, "tests": tests}))
+    payload: dict = {"function": function, "tests": tests}
+    if targets is not None:
+        payload["targets"] = targets
+    path.write_text(json.dumps(payload))
     return path
 
 

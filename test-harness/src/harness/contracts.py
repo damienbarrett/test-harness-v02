@@ -13,8 +13,10 @@ through the registry without any manual inlining.
 ``validate_contracts`` is the entry point: it checks every discovered
 ``*.test.json`` suite against its declared contract -- the suite-format
 schema itself, the WIT world/interface/function it claims to exercise, its
-function's parameter/return JSON Schemas, referenced fixture files, and two
-forms of WIT/JSON-Schema conformance (numeric bounds and record shape). It
+function's parameter/return JSON Schemas (with every ``$fixture``
+descriptor in a case's input fully resolved through ``harness.fixtures``
+first, so the schema validates the MATERIALIZED input), and two forms of
+WIT/JSON-Schema conformance (numeric bounds and record shape). It
 returns a list of human-readable error strings; an empty list means every
 discovered suite is valid. It never instantiates or invokes a WASM
 component -- ``harness.cli.main`` runs it after discovery and before any
@@ -39,12 +41,13 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
+from .fixtures import FixtureError, resolve_fixtures
 from .models import WitFunction, WitInterface, WitRecord
 from .wit import WitError, WitWorld, discover_worlds
 
@@ -146,43 +149,6 @@ def _validator_for_ref(registry: Registry, ref: str) -> Draft202012Validator:
     resolved through ``registry`` so relative ``$ref``s inside the target
     schema keep resolving against its own base URI."""
     return Draft202012Validator({"$ref": ref}, registry=registry)
-
-
-def _iter_fixture_descriptors(value: Any) -> Iterable[dict[str, Any]]:
-    """Yield every ``{"$fixture": "<path>", ...}`` descriptor found
-    anywhere inside ``value`` (a test case's ``input``), at any nesting
-    depth (inside nested objects and inside lists)."""
-    if isinstance(value, dict):
-        if isinstance(value.get("$fixture"), str):
-            yield value
-        for nested in value.values():
-            yield from _iter_fixture_descriptors(nested)
-    elif isinstance(value, list):
-        for item in value:
-            yield from _iter_fixture_descriptors(item)
-
-
-def _check_fixtures(root: Path, input_value: Any, rel: str, description: str) -> list[str]:
-    """Every ``$fixture`` descriptor's referenced path must exist and must
-    resolve under ``common/fixtures/``. Full fixture resolution (encoding,
-    compression, size limits) is Phase 4; this is only an existence and
-    confinement check."""
-    errors: list[str] = []
-    fixtures_root = (root / "common" / "fixtures").resolve()
-    for descriptor in _iter_fixture_descriptors(input_value):
-        fixture_ref = descriptor["$fixture"]
-        candidate = (root / fixture_ref).resolve()
-        try:
-            candidate.relative_to(fixtures_root)
-        except ValueError:
-            errors.append(
-                f"{rel}: case '{description}': fixture '{fixture_ref}' must resolve "
-                "under common/fixtures/"
-            )
-            continue
-        if not candidate.is_file():
-            errors.append(f"{rel}: case '{description}': fixture '{fixture_ref}' does not exist")
-    return errors
 
 
 def _named_types_in(type_text: str) -> set[str]:
@@ -366,12 +332,23 @@ def _validate_suite_file(
             duplicates.add(description)
         descriptions_seen.add(description)
 
-        for err in params_validator.iter_errors(case["input"]):
-            errors.append(f"{rel}: case '{description}': input invalid: {err.message}")
+        # Fixtures are resolved FIRST, and the MATERIALIZED input is what
+        # the parameter schema validates -- a raw ``$fixture`` descriptor is
+        # never compared against the schema. A resolution failure (missing
+        # file, path escape, corrupt gzip, oversized, unknown descriptor
+        # key, ...) is itself a contract-validation error, reported here so
+        # it fails before any component is invoked (docs/refactoring-plan.md
+        # Phase 4).
+        try:
+            materialized_input = resolve_fixtures(case["input"], root)
+        except FixtureError as exc:
+            errors.append(f"{rel}: case '{description}': {exc}")
+        else:
+            for err in params_validator.iter_errors(materialized_input):
+                errors.append(f"{rel}: case '{description}': input invalid: {err.message}")
+
         for err in returns_validator.iter_errors(case["expected"]):
             errors.append(f"{rel}: case '{description}': expected invalid: {err.message}")
-
-        errors.extend(_check_fixtures(root, case["input"], rel, description))
 
     if duplicates:
         errors.append(f"{rel}: duplicate case description(s): {sorted(duplicates)}")

@@ -21,9 +21,18 @@ Any directory matching that pattern is expected to contain a
 
 After discovery, and before any component is instantiated, every suite is
 run through ``harness.contracts.validate_contracts`` -- a malformed suite,
-an undeclared function, a fixture that does not exist, or a WIT/JSON-Schema
-numeric or record mismatch fails the whole run immediately, rather than
-during (or after) invoking a component (docs/refactoring-plan.md Phase 3).
+an undeclared function, a ``$fixture`` descriptor that cannot be resolved,
+or a WIT/JSON-Schema numeric or record mismatch fails the whole run
+immediately, rather than during (or after) invoking a component
+(docs/refactoring-plan.md Phase 3).
+
+Each case's ``$fixture`` descriptors are materialized (via
+``harness.fixtures``, the same resolver contract validation used) before
+call arguments are built, so components receive decoded file contents --
+never descriptors, and never filesystem paths. A suite whose ``targets``
+metadata excludes ``"component"`` is announced with an explicit
+``SKIP (declared native-only): ...`` line and counts as neither pass nor
+fail (docs/refactoring-plan.md Phase 4).
 
 Exit code 0 = all pass. Non-zero = at least one failure.
 """
@@ -37,6 +46,7 @@ from wasmtime import Engine
 
 from .contracts import validate_contracts
 from .conversion import normalize_return, prepare_args
+from .fixtures import resolve_fixtures
 from .implementations import discover_implementations
 from .invocation import call_function, instantiate_component
 from .models import discover_test_suites
@@ -93,7 +103,23 @@ def main(root: Path | None = None) -> int:
         tests = suite.tests
         suite_rel = suite.path.relative_to(root)
 
+        # A suite whose declared targets exclude "component" is never run
+        # against components. This is an explicit, announced declaration --
+        # never a silent skip -- and it counts as neither pass nor fail.
+        # (An unknown target value is a contract-validation ERROR, caught
+        # by the suite-format schema's enum before this loop starts.)
+        if suite.targets is not None and "component" not in suite.targets:
+            print(f"SKIP (declared native-only): {suite_rel}")
+            continue
+
         print(f"--- {suite_rel}")
+
+        # Fixtures are materialized exactly once per case, here, before any
+        # component work. Contract validation has already fully resolved
+        # every descriptor in these same inputs, so a failure at this point
+        # is practically impossible (the tree changed mid-run) and is
+        # deliberately allowed to propagate with its own clear message.
+        resolved_inputs = [resolve_fixtures(case.input, root) for case in tests]
 
         # validate_contracts has already confirmed, for every discovered
         # suite, that its interface is exported by at least one world and
@@ -142,13 +168,13 @@ def main(root: Path | None = None) -> int:
                 lang_passed = 0
                 lang_failed = 0
 
-                for case in tests:
+                for case, resolved_input in zip(tests, resolved_inputs):
                     total += 1
                     description = case.description
                     expected = case.expected
 
                     try:
-                        args = prepare_args(case.input, signature.params)
+                        args = prepare_args(resolved_input, signature.params)
                         raw_actual = call_function(
                             store, instance, interface_export, function, args,
                         )

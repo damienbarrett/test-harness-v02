@@ -12,7 +12,7 @@
     },
     "targets": {
       "type": "array",
-      "description": "Optional restriction on which execution targets this suite applies to (reserved for Phase 4 file-backed fixtures). An unsupported target is a validation error, never a silent skip.",
+      "description": "Optional restriction on which execution targets this suite applies to. Absent = no restriction. A suite excluding 'component' is announced by the WASM harness with an explicit SKIP line; an unsupported target value is a validation error, never a silent skip.",
       "items": {
         "enum": ["native", "component"]
       },

@@ -19,9 +19,12 @@ first, so the schema validates the MATERIALIZED input), and two forms of
 WIT/JSON-Schema conformance (numeric bounds and record shape). It
 returns a list of human-readable error strings; an empty list means every
 discovered suite is valid. It never instantiates or invokes a WASM
-component -- ``harness.cli.main`` runs it after discovery and before any
-component is touched, so a malformed contract fails before invocation
-rather than during it (docs/refactoring-plan.md Phase 3).
+component -- ``harness.cli.main`` runs it immediately after WIT world
+discovery (passing those worlds in, so discovery happens once per run) and
+before suite models are loaded, implementations are discovered, or any
+component is touched, so a malformed contract fails with a clear
+validation error before anything else can trip over it or mask it
+(docs/refactoring-plan.md Phase 3).
 
 **WIT is authoritative.** A WIT ``record`` (e.g. ``task`` in
 ``common/wit/tasks.wit``) is the source of truth for a domain entity's
@@ -111,6 +114,15 @@ _WIT_TYPE_KEYWORDS = frozenset(
 _TYPE_IDENTIFIER_RE = re.compile(r"[A-Za-z][\w-]*")
 
 
+class SchemaLoadError(Exception):
+    """A schema file under ``common/`` could not be parsed as JSON.
+
+    Raised by ``build_registry`` with a per-file message;
+    ``validate_contracts`` reports it as a validation error rather than
+    letting a raw ``json.JSONDecodeError`` traceback escape.
+    """
+
+
 def _discover_schema_files(root: Path) -> list[Path]:
     """Every schema file the registry should know about: domain entities,
     the suite-format schema(s), and each function's parameter/return
@@ -148,8 +160,11 @@ def build_registry(root: Path) -> tuple[Registry, dict[str, dict[str, Any]]]:
     schemas_by_path: dict[str, dict[str, Any]] = {}
     resources: list[tuple[str, Resource]] = []
     for path in _discover_schema_files(root):
-        contents = json.loads(path.read_text())
         rel = path.relative_to(root).as_posix()
+        try:
+            contents = json.loads(path.read_text())
+        except json.JSONDecodeError as exc:
+            raise SchemaLoadError(f"{rel}: invalid JSON in schema file: {exc}") from exc
         schemas_by_path[rel] = contents
         resource = Resource.from_contents(contents, default_specification=DRAFT202012)
         resources.append((rel, resource))
@@ -395,25 +410,35 @@ def _validate_suite_file(
     return errors
 
 
-def validate_contracts(root: Path) -> list[str]:
+def validate_contracts(root: Path, worlds: list[WitWorld] | None = None) -> list[str]:
     """Validate every discovered ``*.test.json`` suite under
     ``common/functions/`` against its declared contract. See the module
     docstring for the full list of checks performed.
+
+    ``worlds`` lets a caller that has already run WIT discovery
+    (``harness.cli.main``) pass its worlds in instead of this function
+    re-discovering them; the default ``None`` keeps the standalone entry
+    point (``check-contracts.py`` / ``python -m harness.contracts``)
+    self-contained.
 
     Returns a list of human-readable error strings; an empty list means
     every discovered suite is valid. This function only reads files under
     ``root`` -- it never instantiates or invokes a WASM component.
     """
-    try:
-        worlds = discover_worlds(root)
-    except WitError as exc:
-        return [f"WIT discovery failed: {exc}"]
+    if worlds is None:
+        try:
+            worlds = discover_worlds(root)
+        except WitError as exc:
+            return [f"WIT discovery failed: {exc}"]
 
     functions_dir = root / "common" / "functions"
     if not functions_dir.is_dir():
         return []
 
-    registry, schemas_by_path = build_registry(root)
+    try:
+        registry, schemas_by_path = build_registry(root)
+    except SchemaLoadError as exc:
+        return [str(exc)]
 
     errors: list[str] = []
     for suite_path in sorted(functions_dir.rglob("*.test.json")):

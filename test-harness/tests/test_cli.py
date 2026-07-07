@@ -1,3 +1,4 @@
+import json
 from dataclasses import make_dataclass
 
 from harness import cli
@@ -26,13 +27,10 @@ def test_main_fails_when_no_suites_found(tmp_path, capsys):
 
 
 def test_main_fails_when_no_implementations_found(tmp_path, capsys):
-    write_world(tmp_path, "task-component")
-    write_suite(
-        tmp_path,
-        "task-collections",
-        "count-tasks",
-        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
-    )
+    # The contract is fully valid -- only the implementation directories are
+    # missing -- because contract validation now runs BEFORE implementation
+    # discovery, so an invalid contract would fail with a different message.
+    write_valid_contract(tmp_path)
     assert cli.main(tmp_path) == 1
     assert "no implementation directories found" in capsys.readouterr().err
 
@@ -376,6 +374,100 @@ def test_main_never_instantiates_a_component_when_contracts_are_invalid(
     assert exit_code == 1
     assert "FAIL: contract validation failed; no component was invoked:" in err
     assert "function 'not-a-real-function' is not declared" in err
+
+
+# --- validation ordering (external review Fix 1 / Fix 2) --------------------
+
+
+def test_main_reports_invalid_suite_json_as_contract_error_not_traceback(
+    tmp_path, capsys
+):
+    """A suite file containing invalid JSON must fail through the
+    contract-validation path (exit 1, a per-file validation error) -- never
+    as a raw ``json.JSONDecodeError`` traceback from suite-model loading.
+    ``cli.main`` validates contracts BEFORE ``discover_test_suites`` parses
+    any suite into models."""
+    write_world(tmp_path, "task-component")
+    write_suite_schema(tmp_path)
+    d = tmp_path / "common" / "functions" / "task-collections"
+    d.mkdir(parents=True)
+    (d / "count-tasks.test.json").write_text("{not json")
+    write_component(tmp_path, "python", "task-component")
+
+    exit_code = cli.main(tmp_path)
+    err = capsys.readouterr().err
+
+    assert exit_code == 1
+    assert "FAIL: contract validation failed; no component was invoked:" in err
+    assert "invalid JSON" in err
+
+
+def test_main_reports_suite_missing_tests_key_as_contract_error(tmp_path, capsys):
+    """A suite missing its required ``tests`` key must fail through the
+    contract-validation path -- never as a raw ``KeyError`` traceback from
+    suite-model loading indexing ``data["tests"]``."""
+    write_world(tmp_path, "task-component")
+    write_suite_schema(tmp_path)
+    d = tmp_path / "common" / "functions" / "task-collections"
+    d.mkdir(parents=True)
+    (d / "count-tasks.test.json").write_text(json.dumps({"function": "count-tasks"}))
+    write_component(tmp_path, "python", "task-component")
+
+    exit_code = cli.main(tmp_path)
+    err = capsys.readouterr().err
+
+    assert exit_code == 1
+    assert "FAIL: contract validation failed; no component was invoked:" in err
+    assert "'tests' is a required property" in err
+
+
+def test_main_reports_contract_errors_even_when_no_implementations_exist(
+    tmp_path, capsys
+):
+    """A repository with a broken contract AND no implementation
+    directories must report the contract errors: contract validation runs
+    before implementation discovery, so 'no implementation directories
+    found' can never mask a contract error."""
+    write_world(tmp_path, "task-component")
+    write_suite_schema(tmp_path)
+    write_suite(
+        tmp_path,
+        "task-collections",
+        "not-a-real-function",
+        [{"description": "d", "input": {"tasks": []}, "expected": 0}],
+    )
+    # Deliberately no */component/ implementation directory at all.
+
+    exit_code = cli.main(tmp_path)
+    err = capsys.readouterr().err
+
+    assert exit_code == 1
+    assert "function 'not-a-real-function' is not declared" in err
+    assert "no implementation directories found" not in err
+
+
+def test_main_passes_discovered_worlds_to_validate_contracts(tmp_path, monkeypatch):
+    """``cli.main`` hands ``validate_contracts`` the worlds it has already
+    discovered instead of letting it re-run WIT discovery (external review
+    Fix 2: no duplicate WIT discovery per run)."""
+    write_valid_contract(tmp_path)
+    write_component(tmp_path, "python", "task-component")
+
+    seen: dict[str, object] = {}
+
+    def spy_validate_contracts(root, worlds=None):
+        seen["worlds"] = worlds
+        return []
+
+    monkeypatch.setattr(cli, "validate_contracts", spy_validate_contracts)
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
+    monkeypatch.setattr(cli, "call_function", lambda *a, **k: 0)
+
+    assert cli.main(tmp_path) == 0
+    assert seen["worlds"] is not None
+    assert [world.name for world in seen["worlds"]] == ["task-component"]
 
 
 def test_main_uses_wit_declared_param_order_not_json_insertion_order(

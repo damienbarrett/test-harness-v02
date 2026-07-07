@@ -19,12 +19,16 @@ Implementations are discovered by scanning for ``*/component/`` directories.
 Any directory matching that pattern is expected to contain a
 ``{world}.wasm`` file for every world defined in the WIT.
 
-After discovery, and before any component is instantiated, every suite is
-run through ``harness.contracts.validate_contracts`` -- a malformed suite,
-an undeclared function, a ``$fixture`` descriptor that cannot be resolved,
-or a WIT/JSON-Schema numeric or record mismatch fails the whole run
-immediately, rather than during (or after) invoking a component
-(docs/refactoring-plan.md Phase 3).
+Immediately after WIT world discovery -- before suite models are loaded,
+before implementations are discovered, and before any component is
+instantiated -- every suite is run through
+``harness.contracts.validate_contracts`` (handing it the already-discovered
+worlds, so WIT discovery happens once per run). A malformed suite, an
+undeclared function, a ``$fixture`` descriptor that cannot be resolved, or
+a WIT/JSON-Schema numeric or record mismatch fails the whole run
+immediately with a clear validation error, rather than surfacing as a raw
+traceback from suite-model loading or being masked by a
+missing-implementations failure (docs/refactoring-plan.md Phase 3).
 
 Each case's ``$fixture`` descriptors are materialized (via
 ``harness.fixtures``, the same resolver contract validation used) before
@@ -69,6 +73,25 @@ def main(root: Path | None = None) -> int:
         print("FAIL: no worlds found in common/wit/", file=sys.stderr)
         return 1
 
+    # Contracts are validated FIRST -- before suite models are loaded and
+    # before implementations are discovered -- so a malformed suite fails
+    # here as a clear validation error (never a raw json/KeyError traceback
+    # out of discover_test_suites) and a missing implementation directory
+    # can never mask a contract error.
+    contract_errors = validate_contracts(root, worlds=worlds)
+    if contract_errors:
+        print(
+            "FAIL: contract validation failed; no component was invoked:",
+            file=sys.stderr,
+        )
+        for error in contract_errors:
+            print(f"  {error}", file=sys.stderr)
+        return 1
+
+    # validate_contracts has already parsed every suite's JSON once; this
+    # re-parse into models is accepted as cheap -- a shared suite-context
+    # object was considered and rejected to keep contracts.py decoupled
+    # from models.py.
     suites = discover_test_suites(root)
     if not suites:
         print("FAIL: no test suites found under common/functions/", file=sys.stderr)
@@ -77,16 +100,6 @@ def main(root: Path | None = None) -> int:
     langs = discover_implementations(root)
     if not langs:
         print("FAIL: no implementation directories found", file=sys.stderr)
-        return 1
-
-    contract_errors = validate_contracts(root)
-    if contract_errors:
-        print(
-            "FAIL: contract validation failed; no component was invoked:",
-            file=sys.stderr,
-        )
-        for error in contract_errors:
-            print(f"  {error}", file=sys.stderr)
         return 1
 
     total = 0

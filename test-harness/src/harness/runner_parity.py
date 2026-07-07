@@ -20,7 +20,10 @@ This script treats "container:build" (Taskfile) and "container-build"
 
 Aggregator normalisation: Taskfile entries of the form "cmds: [{task: X}]"
 are treated as dependencies for comparison, since that is what they are
-semantically and what justfile expresses with "recipe: X".
+semantically and what justfile expresses with "recipe: X". Dependency
+comparison is genuinely set-based: both parsers deduplicate, so a Taskfile
+listing the same dependency in "deps:" AND as a "cmds: [{task: X}]"
+aggregator entry compares equal to a justfile listing it once.
 
 Exit code 0 = all parity. Non-zero = missing recipes, divergent deps, or
 divergent command bodies.
@@ -102,7 +105,7 @@ def _parse_taskfile_direct(path: Path) -> dict[str, dict]:
                     deps.append(canonical_name(cmd["task"]))
                 elif isinstance(cmd, str):
                     cmds.append(normalize_command(cmd))
-        out[name] = {"deps": sorted(deps), "cmds": cmds}
+        out[name] = {"deps": sorted(set(deps)), "cmds": cmds}
     return out
 
 
@@ -141,7 +144,7 @@ def parse_justfile(path: Path) -> dict[str, dict]:
         name, deps = current
         joined = "\n".join(line for line in body if line.strip())
         cmds = [normalize_command(line) for line in joined.split("\n") if line.strip()]
-        out[name] = {"deps": sorted(deps), "cmds": cmds}
+        out[name] = {"deps": sorted(set(deps)), "cmds": cmds}
         current = None
         body = []
 

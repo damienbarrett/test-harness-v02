@@ -21,7 +21,10 @@ cmd_setup() {
   cargo fetch --locked
 }
 
-cmd_build() {
+# The one shared release-component build sequence, used by both cmd_build
+# and cmd_coverage: compile, leave the regenerated bindings rustfmt-clean,
+# and copy the artifact into place.
+build_component_artifact() {
   cargo component build --release --locked --offline
   # cargo-component (re)generates src/bindings.rs during the build with
   # formatting rustfmt rejects (Phase 0 baseline / Phase 9 of
@@ -32,6 +35,10 @@ cmd_build() {
   # to pass from a fresh build. `--edition 2021` matches Cargo.toml.
   rustfmt --edition 2021 src/bindings.rs
   cp "$CARGO_TARGET_DIR/wasm32-wasip1/release/task_component.wasm" task-component.wasm
+}
+
+cmd_build() {
+  build_component_artifact
 }
 
 # build is a native dependency of test in both runners, so this only performs
@@ -67,10 +74,7 @@ cmd_update() {
 # cache (see rust/library/lifecycle.sh).
 cmd_coverage() {
   cargo clean
-  cargo component build --release --locked --offline
-  # Same rule as cmd_build: leave the regenerated bindings.rs rustfmt-clean.
-  rustfmt --edition 2021 src/bindings.rs
-  cp "$CARGO_TARGET_DIR/wasm32-wasip1/release/task_component.wasm" task-component.wasm
+  build_component_artifact
   cargo llvm-cov clean --workspace
   cargo llvm-cov --locked --offline --tests --fail-under-lines 100 --fail-under-functions 100 --fail-under-regions 100
 }

@@ -60,7 +60,16 @@ tasks:
     tf = parse_taskfile(taskfile)
     assert "default" not in tf
     assert tf["build"] == {"deps": [], "cmds": ["echo build"]}
-    assert tf["test"] == {"deps": ["build", "build"], "cmds": ["echo test"]}
+    # "build" appears both in deps: and as a cmds: {task: build} aggregator
+    # entry -- one logical dependency, so it is deduplicated (Fix 3).
+    assert tf["test"] == {"deps": ["build"], "cmds": ["echo test"]}
+
+
+def test_parse_justfile_dedupes_duplicate_dependencies(tmp_path):
+    justfile = tmp_path / "justfile"
+    justfile.write_text("build:\n    echo build\n\ntest: build build\n    echo test\n")
+    jf = parse_justfile(justfile)
+    assert jf["test"]["deps"] == ["build"]
 
 
 def test_parse_taskfile_deps_entry_as_dict_form(tmp_path):
@@ -275,6 +284,58 @@ def test_main_fails_on_missing_recipe(tmp_path, capsys):
     assert exit_code == 1
     assert "only in Taskfile.yml" in captured.out
     assert "location(s) with drift" in captured.err
+
+
+def test_main_parity_ok_when_taskfile_duplicates_dep_as_aggregator_entry(
+    tmp_path, capsys
+):
+    """A Taskfile listing the same dependency in ``deps:`` AND as a
+    ``cmds: [{task: ...}]`` aggregator entry is one logical dependency; it
+    must compare equal to a justfile listing it once (Fix 3: dependency
+    comparison is genuinely set-based)."""
+    _write_pair(
+        tmp_path,
+        'version: "3"\n'
+        "tasks:\n"
+        "  build:\n"
+        "    cmds:\n"
+        "      - echo build\n"
+        "  test:\n"
+        "    deps: [build]\n"
+        "    cmds:\n"
+        "      - {task: build}\n"
+        "      - echo test\n",
+        "build:\n    echo build\n\ntest: build\n    echo test\n",
+    )
+    assert main(tmp_path) == 0
+    assert "OK: 1 Taskfile.yml/justfile pair(s) in parity." in capsys.readouterr().out
+
+
+def test_main_still_fails_on_genuine_dependency_difference_after_dedup(
+    tmp_path, capsys
+):
+    """Deduplication must not swallow a real difference: a dependency
+    present only on the Taskfile side is still a parity failure."""
+    _write_pair(
+        tmp_path,
+        'version: "3"\n'
+        "tasks:\n"
+        "  build:\n"
+        "    cmds:\n"
+        "      - echo build\n"
+        "  lint:\n"
+        "    cmds:\n"
+        "      - echo lint\n"
+        "  test:\n"
+        "    deps: [build, lint]\n"
+        "    cmds:\n"
+        "      - echo test\n",
+        "build:\n    echo build\n\nlint:\n    echo lint\n\ntest: build\n    echo test\n",
+    )
+    exit_code = main(tmp_path)
+    out = capsys.readouterr().out
+    assert exit_code == 1
+    assert "deps differ" in out
 
 
 def test_main_fails_on_dependency_mismatch(tmp_path, capsys):

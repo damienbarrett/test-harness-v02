@@ -1,10 +1,12 @@
 import json
+import shutil
 
 from harness import contracts
 from harness.contracts import (
     build_registry,
     validate_contracts,
 )
+from harness.wit import discover_worlds
 
 from .conftest import (
     write_function_schema,
@@ -68,6 +70,33 @@ def test_errors_aggregate_across_multiple_suites_in_sorted_order(tmp_path):
     assert len(errors) == 1
     assert "bogus.test.json" in errors[0]
     assert "not-bogus" in errors[0]
+
+
+def test_validate_contracts_uses_caller_provided_worlds_without_rediscovery(tmp_path):
+    """When the caller passes ``worlds`` (as ``harness.cli.main`` does with
+    the worlds it has already discovered), ``validate_contracts`` must use
+    them as-is instead of re-running WIT discovery. Proof: the WIT tree is
+    deleted after discovery, so a re-discovery would find no worlds and
+    report the suite's interface as unexported."""
+    write_valid_contract(tmp_path)
+    worlds = discover_worlds(tmp_path)
+    shutil.rmtree(tmp_path / "common" / "wit")
+
+    assert validate_contracts(tmp_path, worlds=worlds) == []
+
+
+def test_malformed_schema_file_is_a_per_file_error_not_a_traceback(tmp_path):
+    """A schema file under ``common/`` that is not valid JSON must surface
+    as a clear per-file validation error naming the file -- never a raw
+    ``json.JSONDecodeError`` traceback out of ``build_registry``."""
+    write_valid_contract(tmp_path)
+    (tmp_path / "common" / "schemas" / "test-suite.schema.json").write_text("{not json")
+
+    errors = validate_contracts(tmp_path)
+
+    assert len(errors) == 1
+    assert "common/schemas/test-suite.schema.json" in errors[0]
+    assert "invalid JSON" in errors[0]
 
 
 # --- suite-format schema violations --------------------------------------

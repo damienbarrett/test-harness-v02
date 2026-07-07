@@ -43,6 +43,10 @@ independently in each solution's own script rather than through shared code.
 - A fix to one container solution's scripts does not automatically apply to
   the other -- the Phase 10 fail-fast policy change had to be made twice,
   and any future fix carries the same cost.
+- The byte-identity of the two solutions' `container-suite.sh` policy
+  scripts is now pinned by a harness test
+  (`test-harness/tests/test_container_policy_sync.py`); a deliberate
+  divergence must update that test and this ADR.
 - Extracting shared, base-image-neutral low-level operations remains an
   option a maintainer could approve later (Phase 10 left it "N/A -- not
   approved"), but this ADR does not block that -- provided the public entry

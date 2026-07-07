@@ -21,21 +21,35 @@ This document defines the strict, opinionated framework for application developm
 The project operates as a **Monorepo** to enable atomic commits across contracts and implementations.
 - `common/`: The language-agnostic source of truth. Contains JSON schemas, WIT definitions, test fixtures, and requirements. Does not contain executable lifecycles.
 - `sub-repos/` (e.g., `rust/`, `javascript/`, `python/`): The implementation directories. These have no visibility into each other, only into `common/`.
-- **Strict Directory Roles** (enforced via sandbox/permissions where possible):
-  - `src/`: Read-only during lifecycle execution. Only source code committed to Git.
-  - `build/`: Transitory compilation files.
-  - `cache/`: Downloaded external dependencies.
-  - `dist/`: Compiled, ready-to-use artifacts.
-  - `log/`: Output for observability and agent feedback.
+- **Strict Directory Roles** (state ownership by purpose, not a literal
+  `src/`/`build/`/`cache/`/`dist/`/`log/` folder set -- see `README.md`
+  "State ownership: the `HARNESS_*` variables" for the full per-directory
+  table):
+  - **Source**: tracked files committed to Git. Read-only during lifecycle
+    execution.
+  - **Cache** (`$HARNESS_CACHE_DIR`, default `<dir>/.harness/cache`):
+    downloaded external dependencies and build caches (e.g. the shared `uv`
+    cache, Cargo's target directory). Survives `clean`; removed only by
+    `purge`.
+  - **Outputs** (`$HARNESS_OUTPUT_DIR`, default `<dir>/.harness/outputs`):
+    compiled artifacts, generated bindings/transpiled code, and coverage
+    reports. Removed by both `clean` and `purge`.
+  - Each of `python/`, `javascript/`, `rust/`, and `test-harness/` derives
+    `HARNESS_DIR` (and the cache/output directories under it) exactly once,
+    in that directory's own `lifecycle.sh`; observability output is the
+    lifecycle command's own stdout/stderr (§5), not a separate `log/`
+    directory.
 
 ## 4. Lifecycle Verbs & Orchestration
 Orchestration is handled by a lightweight runner (e.g., `Task` or `Just`). Every layer exposes the exact same verbs.
 - `setup`: Idempotent environment initialization. Safe to run repeatedly.
+- `build`: Compiles each language's WASM component(s). Safe to run repeatedly; nothing else in the lifecycle assumes a build artifact already exists.
 - `test`: Validates the implementation against the contracts.
+- `lint`: Runs the directory's formatter and linter checks with warnings denied (see §8) so no test run can pass with a formatting, lint, audit, or shellcheck violation.
 - `coverage`: Generates code coverage metrics.
-- `clean`: Removes generated outputs (`build/`, `dist/`).
-- `purge`: Destructive removal of `cache/` and environment setups.
-- `update`: Explicitly upgrades locked dependencies and regenerates lockfiles.
+- `clean`: Removes generated outputs (compiled artifacts, generated bindings/transpiled code, coverage reports -- the "Outputs" role in §3).
+- `purge`: Destructive removal of caches, environment setups, and installed dependencies (the "Cache" role in §3, plus `.venv`/`node_modules`/build-tool target directories).
+- `update`: Explicitly upgrades locked dependencies and regenerates lockfiles; the only verb (besides `setup`) expected to need network access, and the only one allowed to change a lockfile.
 **Rule**: If any sub-layer fails, the orchestrator exits non-zero immediately. No silent partial successes.
 
 ## 5. Agentic Behavior & Feedback Loops
@@ -71,7 +85,17 @@ Orchestration is handled by a lightweight runner (e.g., `Task` or `Just`). Every
 - Code structured as a proper package using `pyproject.toml`.
 
 ### WebAssembly (WASM)
-- Target the latest WASI (e.g., Preview 3 / Component Model).
+- **Target, as actually built** (amended -- see `docs/refactoring-plan.md`
+  Phase 8/9): each language's build toolchain (`componentize-py`,
+  `jco componentize`, `cargo-component` -- the latter explicitly targeting
+  `wasm32-wasip1`, per `rust/flake.nix`) produces a Component Model `.wasm`
+  artifact, and the server-side host instantiates every one of them through
+  a single plain WASI Preview 2 linker (`wasmtime` 43's
+  `linker.add_wasip2()`, see `test-harness/src/harness/invocation.py`) with
+  no fallback or retry -- an import that linker does not provide is a
+  contract violation, not a compatibility case to patch around. There is no
+  Preview 3 usage anywhere in the toolchain today; treat this paragraph, not
+  the phrase "latest WASI," as authoritative until the toolchain changes.
 - WASM modules should comprise pure functions.
 - Implementations must be validated in both client-side (in-browser) and server-side (`wasmtime`) hosts.
 

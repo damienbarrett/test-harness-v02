@@ -1,5 +1,12 @@
 # NixOS 25.11 Apple Container Base
 
+ARCHIVED 2026-07-07: superseded; retained for history. Every item below is
+already checked off -- this documents a completed, separate effort (adding
+the container/aarch64-darwin-apple-container-nixos-25.11/ solution) and is
+kept only as a record of that work and its validation notes. For current
+container documentation see container/README.md, container/
+aarch64-darwin-apple-container-nixos-25.11/README.md, and docs/nix.md.
+
 Last updated: 2026-05-01
 
 ## Status

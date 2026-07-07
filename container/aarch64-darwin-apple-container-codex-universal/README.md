@@ -59,12 +59,6 @@ task test
 task coverage
 ```
 
-If the repository was cloned without submodules, initialize them before setup:
-
-```sh
-git submodule update --init --recursive
-```
-
 ## Host Lifecycle: Apple Container Without Host Bind Mounts
 
 Use this when the host should establish a container/image first, then run the same lifecycle inside it without binding the host checkout into the container.
@@ -86,7 +80,8 @@ just host-container-purge
 - the Codex universal base image and pinned runtime versions
 - harness tools installed by `container/aarch64-darwin-apple-container-codex-universal/Containerfile`
 - locked Playwright browser dependencies for the JavaScript browser tests
-- this repository source, including initialized submodules
+- this repository source (a plain tracked checkout -- there are no git
+  submodules to initialize)
 
 The host test and coverage commands run that source-containing image with:
 

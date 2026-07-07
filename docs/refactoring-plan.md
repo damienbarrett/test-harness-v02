@@ -106,6 +106,12 @@ another agent can take over at any point.
   silent-failure bugs fixed; 10 new real-execution tests (226 total).
   Note: a883afd separately staged Phase 9 shellcheck fixes to container/
   that the ddd0d48 commit had missed.
+- Phase 11 — DONE (commit titled "Clean up documentation and record ADRs
+  (Phase 11)"). Root plan.md/todo.txt archived under docs/archive/; five
+  ADRs in docs/adr/; README expanded (architecture, adding a capability,
+  file-backed test walkthrough, lifecycle verb table, native-vs-component
+  criteria); constitution §3/§4/§7 reconciled with reality; stale
+  submodule/README references removed.
 - Untracked files at repo root to leave alone: `parser-plan.md` and the raw
   `www.newworld.co.nz_...html` capture (original of the Phase 4 fixture).
 
@@ -567,28 +573,38 @@ container failure behavior is unambiguous.
 
 ## Phase 11 — Documentation cleanup
 
-- [ ] Move the existing root `plan.md` to an explicitly historical location or
-  mark it as archived.
-- [ ] Do the same for root `todo.txt`: every item in it is already checked
+- [x] Move the existing root `plan.md` to an explicitly historical location or
+  mark it as archived. (git mv → docs/archive/plan-shopping-optimiser-
+  transposition.md with an ARCHIVED banner.)
+- [x] Do the same for root `todo.txt`: every item in it is already checked
   off and it documents a completed, separate effort (the NixOS 25.11
   container base). Archive it alongside `plan.md` rather than leaving two
   stale root-level planning documents for a contributor to sort through.
-- [ ] Remove stale absolute repository paths and references to absent policy
-  files.
-- [ ] Convert durable architectural decisions into short ADRs:
-  - [ ] Shared WIT as the component authority.
-  - [ ] Native versus component implementation boundaries.
-  - [ ] File fixture transport.
-  - [ ] Task/Just parity strategy.
-  - [ ] Separate container implementations.
-- [ ] Expand README with:
-  - [ ] Architecture overview.
-  - [ ] Adding a new capability.
-  - [ ] Adding a file-backed parsing test.
-  - [ ] Build/test lifecycle.
-  - [ ] Native-only versus component execution criteria.
-- [ ] Reconcile documented lifecycle verbs, directory roles, WASI target, and
-  actual tooling.
+  (→ docs/archive/todo-nixos-25.11-container-base.txt.)
+- [x] Remove stale absolute repository paths and references to absent policy
+  files. (Nonexistent-submodule instructions in the codex-universal
+  container README; a comment pointing at a nonexistent javascript/README;
+  grep for /Users/, /persist/git/, AGENTS.md/CONTRIBUTING.md, and stale
+  harness-internals descriptions found nothing else — the one /Users/ hit
+  is genuine macOS-host df behavior.)
+- [x] Convert durable architectural decisions into short ADRs (docs/adr/):
+  - [x] Shared WIT as the component authority. (0001)
+  - [x] Native versus component implementation boundaries. (0002)
+  - [x] File fixture transport. (0003)
+  - [x] Task/Just parity strategy. (0004)
+  - [x] Separate container implementations. (0005)
+- [x] Expand README with:
+  - [x] Architecture overview.
+  - [x] Adding a new capability.
+  - [x] Adding a file-backed parsing test. (Uses the real
+    newworld-search-eggs.html.gz fixture as the worked example.)
+  - [x] Build/test lifecycle.
+  - [x] Native-only versus component execution criteria.
+- [x] Reconcile documented lifecycle verbs, directory roles, WASI target, and
+  actual tooling. (Constitution §3 amended to the HARNESS_* state model,
+  §4 gains build and lint, §7 WASM target amended from "Preview 3" to the
+  actual wasm32-wasip1/Component-Model-on-wasip2-linker reality; container
+  and worktree docs verified against actual flags.)
 
 Done when a contributor can add a new HTML parsing capability without relying
 on historical handoff documents.

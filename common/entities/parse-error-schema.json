@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/entities/parse-error-schema.json",
+  "type": "object",
+  "title": "ParseError",
+  "description": "A structured parse failure (mirrors the WIT `parse-error` record in common/wit/html-parser.wit). Returned when the document contains no recognizable search-results structure at all; a recognizable page with zero product cards is a successful empty result, never an error.",
+  "properties": {
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Stable kebab-case error code (e.g. \"no-results-container\")"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable detail for diagnostics; not part of the stable contract"
+    }
+  },
+  "required": ["code", "message"],
+  "additionalProperties": false
+}

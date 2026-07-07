@@ -10,10 +10,13 @@
 output/
 library/target/
 component/target/
+component/new-world-parser/target/
 
 # Generated component artifacts
 component/task-component.wasm
+component/new-world-parser.wasm
 component/src/bindings.rs
+component/new-world-parser/src/bindings.rs
 
 # Coverage and compiled artifacts
 .coverage

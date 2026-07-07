@@ -21,7 +21,7 @@ build-backend = "hatchling.build"
 packages = ["src"]
 
 [tool.coverage.run]
-include = ["src/app.py"]
+include = ["src/app.py", "src/new_world_parser.py", "src/parser_app.py"]
 
 [tool.coverage.report]
 fail_under = 100

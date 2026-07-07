@@ -1,0 +1,64 @@
+{
+  "function": "parse-search-results",
+  "tests": [
+    {
+      "description": "extracts product cards from the captured New World size-7-eggs search page",
+      "input": {
+        "html": {
+          "$fixture": "common/fixtures/html-parser/newworld-search-eggs.html.gz",
+          "compression": "gzip",
+          "encoding": "utf-8"
+        },
+        "source-url": "https://www.newworld.co.nz/shop/search?pg=1&q=size%207%20eggs&sf=products"
+      },
+      "expected": {
+        "ok": {
+          "site": "new-world",
+          "source-url": "https://www.newworld.co.nz/shop/search?pg=1&q=size%207%20eggs&sf=products",
+          "next-page-url": null,
+          "products": [
+            {
+              "product-id": "5240876-EA-000",
+              "name": "Farmer Brown Fresh Colony Size 7 Eggs",
+              "subtitle": "12pk",
+              "url": "https://www.newworld.co.nz/shop/product/5240876_ea_000nw?name=farmer-brown-fresh-colony-size-7-eggs",
+              "image-url": "https://a.fsimg.co.nz/product/retail/fan/image/400x400/5240876.png?w=384",
+              "price": { "amount-cents": 973, "per": "ea", "display": "$9.73" },
+              "unit-price": {
+                "amount-cents": 81,
+                "unit": "ea",
+                "display": "$0.81/ea"
+              }
+            },
+            {
+              "product-id": "5309531-EA-000",
+              "name": "Farmer Brown Fresh Colony Size 7 Eggs",
+              "subtitle": "6pk",
+              "url": "https://www.newworld.co.nz/shop/product/5309531_ea_000nw?name=farmer-brown-fresh-colony-size-7-eggs",
+              "image-url": "https://a.fsimg.co.nz/product/retail/fan/image/400x400/5309531.png?w=384",
+              "price": { "amount-cents": 565, "per": "ea", "display": "$5.65" },
+              "unit-price": {
+                "amount-cents": 94,
+                "unit": "ea",
+                "display": "$0.94/ea"
+              }
+            },
+            {
+              "product-id": "5281163-EA-000",
+              "name": "Rise N Shine Size 7 12 Pack Colony Eggs",
+              "subtitle": "12pk",
+              "url": "https://www.newworld.co.nz/shop/product/5281163_ea_000nw?name=rise-n-shine-size-7-12-pack-colony-eggs",
+              "image-url": "https://a.fsimg.co.nz/product/retail/fan/image/400x400/5281163.png?w=384",
+              "price": { "amount-cents": 799, "per": "ea", "display": "$7.99" },
+              "unit-price": {
+                "amount-cents": 67,
+                "unit": "ea",
+                "display": "$0.67/ea"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

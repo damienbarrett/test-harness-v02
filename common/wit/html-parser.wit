@@ -1,0 +1,50 @@
+package common:html-parser;
+
+interface new-world-product-search {
+    /// A price as displayed on a product card.
+    record price {
+        /// Whole price in cents (e.g. $9.73 -> 973).
+        amount-cents: u32,
+        /// The per-unit designator shown with the price (e.g. "ea").
+        per: string,
+        /// Raw display text, for provenance (e.g. "$9.73").
+        display: string,
+    }
+
+    /// A comparative unit price (e.g. "$0.81/ea").
+    record unit-price {
+        amount-cents: u32,
+        unit: string,
+        display: string,
+    }
+
+    record product-card {
+        product-id: string,
+        name: string,
+        subtitle: option<string>,
+        url: string,
+        image-url: option<string>,
+        price: option<price>,
+        unit-price: option<unit-price>,
+    }
+
+    record search-results {
+        site: string,
+        source-url: string,
+        next-page-url: option<string>,
+        products: list<product-card>,
+    }
+
+    record parse-error {
+        /// Stable kebab-case error code (e.g. "no-results-container").
+        code: string,
+        message: string,
+    }
+
+    parse-search-results: func(html: string, source-url: string)
+        -> result<search-results, parse-error>;
+}
+
+world new-world-parser {
+    export new-world-product-search;
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/entities/search-results-schema.json",
+  "type": "object",
+  "title": "SearchResults",
+  "description": "Structured product-card data parsed from one New World search-results page (mirrors the WIT `search-results` record in common/wit/html-parser.wit). Optional WIT fields are required-but-nullable.",
+  "properties": {
+    "site": {
+      "const": "new-world",
+      "description": "The site this parser understands; always \"new-world\""
+    },
+    "source-url": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URL the page was fetched from, echoed back verbatim"
+    },
+    "next-page-url": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "The first a[rel=next] link resolved against the source URL, or null when the page has none"
+    },
+    "products": {
+      "type": "array",
+      "items": { "$ref": "product-card-schema.json" },
+      "description": "Product cards in document order, deduplicated by canonical URL"
+    }
+  },
+  "required": ["site", "source-url", "next-page-url", "products"],
+  "additionalProperties": false
+}

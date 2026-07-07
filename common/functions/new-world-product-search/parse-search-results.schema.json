@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/functions/new-world-product-search/parse-search-results.schema.json",
+  "name": "parse-search-results",
+  "description": "Parses one New World shop-search results page into structured product-card data, or a structured parse error when the document contains no recognizable search-results structure at all",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "html": {
+        "type": "string",
+        "description": "The full decoded HTML text of the captured page (components receive pure data, never file paths)"
+      },
+      "source-url": {
+        "type": "string",
+        "format": "uri",
+        "description": "The URL the page was fetched from; relative links resolve against it"
+      }
+    },
+    "required": ["html", "source-url"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "description": "The result envelope for the WIT `result<search-results, parse-error>` return (see common/README.md): exactly one of an ok branch carrying the parsed search results or an err branch carrying the structured parse error",
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "ok": { "$ref": "../../entities/search-results-schema.json" }
+        },
+        "required": ["ok"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "err": { "$ref": "../../entities/parse-error-schema.json" }
+        },
+        "required": ["err"],
+        "additionalProperties": false
+      }
+    ]
+  }
+}

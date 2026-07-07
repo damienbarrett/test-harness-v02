@@ -1,3 +1,11 @@
+# Workspace root for this directory's component crates. Each WIT world is
+# one cargo-component package (cargo-component builds exactly one world per
+# package), so the second world (new-world-parser) is a member crate that
+# shares this Cargo.lock and the directory-level CARGO_TARGET_DIR.
+[workspace]
+members = ["new-world-parser"]
+resolver = "2"
+
 [package]
 name = "task-component"
 version = "0.1.0"
@@ -18,5 +26,9 @@ serde_json = "1.0"
 package = "common:tasks"
 
 [package.metadata.component.target]
-path = "../../common/wit"
+# The specific WIT file, not the common/wit directory: that directory now
+# holds one file per WIT package (tasks.wit, html-parser.wit), and
+# cargo-component's WIT parser rejects a flat directory containing two
+# different package declarations.
+path = "../../common/wit/tasks.wit"
 world = "task-component"

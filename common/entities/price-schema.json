@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/entities/price-schema.json",
+  "type": "object",
+  "title": "Price",
+  "description": "A price as displayed on a product card (mirrors the WIT `price` record in common/wit/html-parser.wit)",
+  "properties": {
+    "amount-cents": {
+      "type": "integer",
+      "description": "Whole price in cents (e.g. $9.73 -> 973)",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "per": {
+      "type": "string",
+      "description": "The per-unit designator shown with the price (e.g. \"ea\")"
+    },
+    "display": {
+      "type": "string",
+      "description": "Raw display text, for provenance (e.g. \"$9.73\")"
+    }
+  },
+  "required": ["amount-cents", "per", "display"],
+  "additionalProperties": false
+}

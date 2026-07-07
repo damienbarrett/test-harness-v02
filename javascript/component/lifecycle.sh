@@ -20,6 +20,10 @@ wit_path="../../common/wit/tasks.wit"
 world_name="task-component"
 output_wasm="task-component.wasm"
 
+parser_wit_path="../../common/wit/html-parser.wit"
+parser_world_name="new-world-parser"
+parser_output_wasm="new-world-parser.wasm"
+
 cmd_setup() {
   npm ci
 }
@@ -42,6 +46,19 @@ cmd_build() {
     "$JCO_FHS" -c "npx jco transpile $output_wasm -o transpiled/"
   else
     npx jco transpile "$output_wasm" -o transpiled/
+  fi
+  # The new-world-parser component is equally pure -- no clocks, random, or
+  # stdio -- so it uses the same `-d all` capability minimization. Its entry
+  # is the single src/new-world-parser.js module (core + binding glue in one
+  # file): componentize-js evaluates one self-contained module and does not
+  # resolve relative imports, so unlike Python/Rust this language keeps the
+  # core and glue together. The central WASM harness owns its black-box
+  # contract test; there is no Node-host transpile step for it (unlike
+  # task-component, whose transpiled/ output feeds wasm-count-tasks.test.js).
+  if [ -n "${JCO_FHS:-}" ]; then
+    "$JCO_FHS" -c "npx jco componentize src/new-world-parser.js --wit $parser_wit_path -n $parser_world_name -d all -o $parser_output_wasm"
+  else
+    npx jco componentize src/new-world-parser.js --wit "$parser_wit_path" -n "$parser_world_name" -d all -o "$parser_output_wasm"
   fi
 }
 
@@ -92,7 +109,7 @@ cmd_coverage() {
 }
 
 cmd_clean() {
-  rm -rf .coverage .nyc_output coverage output test-results transpiled task-component.wasm
+  rm -rf .coverage .nyc_output coverage output test-results transpiled task-component.wasm new-world-parser.wasm
 }
 
 cmd_purge() {

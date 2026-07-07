@@ -12,15 +12,18 @@ tasks:
       - ./lifecycle.sh setup
 
   build:
-    desc: Build the WASM component
-    # Emits the wit-bindgen-generated `wit_world` package to `bindings/` (a
-    # stable, gitignored location) so host tests can import the real bindings
-    # instead of mocking them. `componentize` then bundles src + bindings.
+    desc: Build the WASM components (one per WIT world)
+    # Emits the wit-bindgen-generated `wit_world` package (merged across
+    # both worlds) to `bindings/` (a stable, gitignored location) so host
+    # tests can import the real bindings instead of mocking them.
+    # `componentize` then bundles src + bindings per world.
     sources:
-      - src/app.py
+      - src/*.py
       - ../../common/wit/tasks.wit
+      - ../../common/wit/html-parser.wit
     generates:
       - task-component.wasm
+      - new-world-parser.wasm
       # Sentinel: forces a rebuild if the bindings dir was wiped (e.g.,
       # `task clean`) so host tests don't load with stale or missing bindings.
       - bindings/wit_world/__init__.py

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/entities/product-card-schema.json",
+  "type": "object",
+  "title": "ProductCard",
+  "description": "One product card extracted from a search-results page (mirrors the WIT `product-card` record in common/wit/html-parser.wit). Optional WIT fields are required-but-nullable: the key is always present, with null for an absent option<>.",
+  "properties": {
+    "product-id": {
+      "type": "string",
+      "description": "The card's data-testid with its `product-` prefix stripped (e.g. \"5240876-EA-000\")"
+    },
+    "name": {
+      "type": "string",
+      "description": "Product title text"
+    },
+    "subtitle": {
+      "type": ["string", "null"],
+      "description": "Product subtitle text (e.g. \"12pk\"), or null when absent"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Canonical product URL: the card link resolved against the source URL, with the volatile `tr` query parameter and any fragment removed"
+    },
+    "image-url": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "The product image src, or null when absent"
+    },
+    "price": {
+      "anyOf": [
+        { "$ref": "price-schema.json" },
+        { "type": "null" }
+      ],
+      "description": "The displayed price, or null when absent"
+    },
+    "unit-price": {
+      "anyOf": [
+        { "$ref": "unit-price-schema.json" },
+        { "type": "null" }
+      ],
+      "description": "The comparative unit price, or null when absent"
+    }
+  },
+  "required": [
+    "product-id",
+    "name",
+    "subtitle",
+    "url",
+    "image-url",
+    "price",
+    "unit-price"
+  ],
+  "additionalProperties": false
+}

@@ -15,6 +15,12 @@ export default [
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
+      // Node globals used by the native fixture adapter and its tests
+      // (this component is exercised server-side via `node --test`).
+      globals: {
+        Buffer: "readonly",
+        TextDecoder: "readonly",
+      },
     },
   },
 ];

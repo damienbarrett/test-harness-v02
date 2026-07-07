@@ -6,12 +6,12 @@ default:
 setup:
     ./lifecycle.sh setup
 
-# Build the WASM component
+# Build the WASM components (one per WIT world)
 #
-# Emits the wit-bindgen-generated `wit_world` package to `bindings/` (a stable
-# location, gitignored) so host tests can import the real bindings instead of
-# mocking them away. The `componentize` step then bundles `src/` + `bindings/`
-# into the WASM artifact.
+# Emits the wit-bindgen-generated `wit_world` package (merged across both
+# worlds) to `bindings/` (a stable location, gitignored) so host tests can
+# import the real bindings instead of mocking them away. The `componentize`
+# step then bundles `src/` + `bindings/` into each WASM artifact.
 build:
     ./lifecycle.sh build
 

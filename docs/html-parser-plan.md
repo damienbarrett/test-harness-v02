@@ -15,26 +15,38 @@ as `db98211`.
   field shape. Returns-side record conformance, one-key ok/err envelope
   validation, numeric-bounds skip for record results, and the
   common/README.md convention all landed. 259 harness tests, 100%.
-- **Stage 2 — IN PROGRESS (subagent, twice interrupted by session
-  limits, resumed from transcript each time)**. State at last checkpoint:
-  - Contract files created: `common/wit/html-parser.wit`, all five entity
+- **Stage 2 — DONE**. Full capability across all three languages. The
+  subagent (running on Fable 5) was exhausted after building the contract
+  files + Rust crate + Python core/components/tests; the orchestrator
+  completed the JavaScript implementation and all verification directly.
+  - Contract: `common/wit/html-parser.wit` (interface
+    `new-world-product-search`, world `new-world-parser`), five entity
     schemas, `common/functions/new-world-product-search/` (function schema
-    + suite).
-  - Rust: `rust/component/new-world-parser/` core crate + component build
-    wiring (Cargo.toml/lockfile, lifecycle.sh, runner files) in place.
-  - Python: core `python/component/src/new_world_parser.py` + componentize
-    entry `parser_app.py`; components built and verified; fixture adapter
-    + native tests (`tests/fixture_adapter.py`, `test_fixture_adapter.py`,
-    `test_new_world_parser.py`, `test_parser_app.py`) just written —
-    verification of those was the next step when interrupted.
-  - JavaScript: not started at last checkpoint.
-  - Remaining after JS: full gate run (contracts:check, build, wasm:test
-    12/12, composed test, coverage 100%, lint, check:runners,
-    clean-rebuild), then orchestrator review/commit/merge.
-- Nothing in Stage 2 is committed yet — by design it lands as one commit
-  because partial-language landings fail `wasm:test` and the
-  real-component gate (every discovered world needs artifacts in every
-  language).
+    with the oneOf ok/err envelope + suite driving the gzip fixture).
+  - Rust: `rust/component/new-world-parser/` crate (scraper/html5ever core)
+    + component build wiring.
+  - Python: `new_world_parser.py` core (stdlib html.parser) + `parser_app.py`
+    glue (componentize-py bundles the src dir), native tests.
+  - JavaScript: single `src/new-world-parser.js` — a hand-rolled tolerant
+    tokenizer (byte-identical output to Python/Rust, no parse5 dependency)
+    plus the `newWorldProductSearch` binding glue in the SAME file, because
+    componentize-js evaluates one self-contained module and does not
+    resolve relative imports (Python/Rust can bundle a dir/crate, JS can't
+    — the per-language core-placement latitude the plan allows). Native
+    tests at 100% branch coverage of the src tokenizer; a thin fixture
+    adapter mirrors the conformance case names.
+  - Result-envelope binding conventions confirmed empirically via
+    `wasm:test`: componentize-js returns the ok value and throws the err
+    value for `result<T,E>`; `option<>` none is `undefined`.
+  - All gates green: `contracts:check`, `task test` (composed), `task
+    coverage` 100% (harness 262 tests + all language gates), `wasm:test`
+    12/12 across 3 implementations, `lint`, `check:runners` 11 pairs/0
+    warnings, and a clean→rebuild cycle (clean removes all six .wasm
+    artifacts, rebuild regenerates and passes 12/12).
+- This completes the one DoD item the refactoring plan deferred: a single
+  external HTML fixture now drives the same contract case through native
+  execution AND all three WASM components, with the parser receiving
+  decoded HTML strings (never a filesystem path).
 
 ## Summary
 

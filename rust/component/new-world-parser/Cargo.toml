@@ -1,0 +1,29 @@
+[package]
+name = "new-world-parser"
+version = "0.1.0"
+edition = "2021"
+description = "WASM component parsing New World shop-search result pages"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+wit-bindgen-rt = { version = "0.44.0", features = ["bitflags"] }
+# html5ever-family HTML parsing (pure Rust, WASM-portable; constitution
+# section 6.3). Verified to build for wasm32-wasip1 by `task build`.
+scraper = { version = "0.24", default-features = false }
+
+[dev-dependencies]
+serde_json = "1.0"
+# Host-test-only gzip support for the shared fixture adapter; never
+# compiled into the WASM artifact.
+flate2 = "1.1"
+
+[package.metadata.component]
+package = "common:html-parser"
+
+[package.metadata.component.target]
+# The specific WIT file, not the common/wit directory -- see the note in
+# ../Cargo.toml.
+path = "../../../common/wit/html-parser.wit"
+world = "new-world-parser"

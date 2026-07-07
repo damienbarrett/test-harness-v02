@@ -12,12 +12,15 @@ tasks:
       - ./lifecycle.sh setup
 
   build:
-    desc: Build the WASM component
+    desc: Build the WASM components (one per WIT world)
     sources:
       - src/**/*.rs
+      - new-world-parser/src/**/*.rs
       - ../../common/wit/tasks.wit
+      - ../../common/wit/html-parser.wit
     generates:
       - task-component.wasm
+      - new-world-parser.wasm
     cmds:
       - ./lifecycle.sh build
 

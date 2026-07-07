@@ -23,6 +23,7 @@ export RUFF_CACHE_DIR="${RUFF_CACHE_DIR:-$HARNESS_CACHE_DIR/ruff}"
 
 wit_dir="../../common/wit"
 output_wasm="task-component.wasm"
+parser_output_wasm="new-world-parser.wasm"
 bindings_dir="bindings"
 
 cmd_setup() {
@@ -31,14 +32,25 @@ cmd_setup() {
 
 # Emits the wit-bindgen-generated `wit_world` package to `bindings/` (a
 # stable, gitignored location) so host tests can import the real bindings
-# instead of mocking them away. `componentize` then bundles src + bindings.
+# instead of mocking them away. componentize-py always names the generated
+# package `wit_world` regardless of the world, so both worlds are generated
+# as ONE merged package (-w twice, an explicitly supported world merge) --
+# separate per-world bindings dirs would collide on the same top-level
+# module name in one host pytest process. Each world's WIT file is passed
+# individually (-d twice): componentize-py's WIT parser rejects a flat
+# directory containing two different package declarations. `componentize`
+# then bundles src + bindings per world.
 cmd_build() {
   rm -rf "$bindings_dir"
   uv run --locked --extra build componentize-py \
-    -d "$wit_dir" -w task-component bindings "$bindings_dir"
+    -d "$wit_dir/tasks.wit" -d "$wit_dir/html-parser.wit" \
+    -w task-component -w new-world-parser bindings "$bindings_dir"
   uv run --locked --extra build componentize-py \
-    -d "$wit_dir" -w task-component componentize \
+    -d "$wit_dir/tasks.wit" -w task-component componentize \
     -p src -p "$bindings_dir" -s -o "$output_wasm" app
+  uv run --locked --extra build componentize-py \
+    -d "$wit_dir/html-parser.wit" -w new-world-parser componentize \
+    -p src -p "$bindings_dir" -s -o "$parser_output_wasm" parser_app
 }
 
 # build is a native dependency of test/coverage in both runners, so this
@@ -73,7 +85,7 @@ cmd_coverage() {
 }
 
 cmd_clean() {
-  rm -rf __pycache__ .pytest_cache .coverage htmlcov output tests/__pycache__ src/__pycache__ "$bindings_dir" "$output_wasm"
+  rm -rf __pycache__ .pytest_cache .coverage htmlcov output tests/__pycache__ src/__pycache__ "$bindings_dir" "$output_wasm" "$parser_output_wasm"
 }
 
 # The `.ruff_cache` removal is one-time-migration cleanup: before

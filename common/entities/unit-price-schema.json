@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/entities/unit-price-schema.json",
+  "type": "object",
+  "title": "UnitPrice",
+  "description": "A comparative unit price, e.g. \"$0.81/ea\" (mirrors the WIT `unit-price` record in common/wit/html-parser.wit)",
+  "properties": {
+    "amount-cents": {
+      "type": "integer",
+      "description": "Unit price in cents (e.g. $0.81/ea -> 81)",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "unit": {
+      "type": "string",
+      "description": "The comparison unit (e.g. \"ea\")"
+    },
+    "display": {
+      "type": "string",
+      "description": "Raw display text, for provenance (e.g. \"$0.81/ea\")"
+    }
+  },
+  "required": ["amount-cents", "unit", "display"],
+  "additionalProperties": false
+}

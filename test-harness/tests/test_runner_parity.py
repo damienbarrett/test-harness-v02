@@ -18,7 +18,7 @@ def test_normalize_command_collapses_whitespace_and_continuations():
 
 
 def test_normalize_command_upper_cases_template_vars_and_strips_comments():
-    assert normalize_command('echo {{.Foo}} # a comment') == "echo {{FOO}}"
+    assert normalize_command("echo {{.Foo}} # a comment") == "echo {{FOO}}"
 
 
 def test_normalize_command_canonicalizes_taskfile_cli_args_placeholder():
@@ -34,9 +34,9 @@ def test_normalize_command_canonicalizes_justfile_args_placeholder():
 
 
 def test_normalize_command_treats_cli_args_and_command_as_identical_tokens():
-    assert normalize_command("./lifecycle.sh container:task {{.CLI_ARGS}}") == normalize_command(
-        "./lifecycle.sh container:task {{command}}"
-    )
+    assert normalize_command(
+        "./lifecycle.sh container:task {{.CLI_ARGS}}"
+    ) == normalize_command("./lifecycle.sh container:task {{command}}")
 
 
 def test_parse_taskfile_direct_skips_default_and_reads_deps_and_cmds(tmp_path):

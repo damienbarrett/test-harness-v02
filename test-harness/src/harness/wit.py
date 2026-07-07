@@ -47,7 +47,9 @@ class DuplicateWorldError(WitError):
 
 
 _COMMENT_RE = re.compile(r"//[^\n]*")
-_PACKAGE_RE = re.compile(r"\bpackage\s+([A-Za-z][\w-]*)\s*:\s*([A-Za-z][\w-]*)(?:@[\w.\-]+)?\s*;")
+_PACKAGE_RE = re.compile(
+    r"\bpackage\s+([A-Za-z][\w-]*)\s*:\s*([A-Za-z][\w-]*)(?:@[\w.\-]+)?\s*;"
+)
 _EXPORT_RE = re.compile(r"\bexport\s+([A-Za-z][\w:./-]*)\s*;")
 _FUNC_STMT_RE = re.compile(
     r"^\s*([A-Za-z][\w-]*)\s*:\s*func\s*\(([^)]*)\)\s*(?:->\s*(.+))?\s*$",
@@ -191,7 +193,9 @@ def _parse_wit_file(path: Path) -> list[WitWorld]:
 
     pkg_match = _PACKAGE_RE.search(text)
     if pkg_match is None:
-        raise WitParseError(f"{path}: no 'package <namespace>:<name>;' declaration found")
+        raise WitParseError(
+            f"{path}: no 'package <namespace>:<name>;' declaration found"
+        )
     namespace, package = pkg_match.group(1), pkg_match.group(2)
 
     interfaces = {

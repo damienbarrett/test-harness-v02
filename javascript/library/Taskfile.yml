@@ -16,6 +16,11 @@ tasks:
     cmds:
       - ./lifecycle.sh test
 
+  lint:
+    desc: Check formatting (prettier), lint (eslint, incl. ../test-support), and audit dependencies
+    cmds:
+      - ./lifecycle.sh lint
+
   coverage:
     desc: Run runtime matrix plus Node coverage (100% threshold)
     cmds:
@@ -31,3 +36,8 @@ tasks:
     cmds:
       - task: clean
       - ./lifecycle.sh purge
+
+  update:
+    desc: Upgrade locked dependencies and regenerate the lockfile
+    cmds:
+      - ./lifecycle.sh update

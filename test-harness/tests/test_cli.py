@@ -28,7 +28,9 @@ def test_main_fails_when_no_suites_found(tmp_path, capsys):
 def test_main_fails_when_no_implementations_found(tmp_path, capsys):
     write_world(tmp_path, "task-component")
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     assert cli.main(tmp_path) == 1
@@ -39,8 +41,12 @@ def test_main_fails_when_duplicate_world_names_are_discovered(tmp_path, capsys):
     """Two packages defining a world with the same name would both need the
     artifact ``shared.wasm`` -- discovery must hard-fail before anything
     else runs, naming both packages."""
-    write_wit_file(tmp_path, "a.wit", "package common:a;\n\nworld shared {\n  export foo;\n}\n")
-    write_wit_file(tmp_path, "b.wit", "package common:b;\n\nworld shared {\n  export bar;\n}\n")
+    write_wit_file(
+        tmp_path, "a.wit", "package common:a;\n\nworld shared {\n  export foo;\n}\n"
+    )
+    write_wit_file(
+        tmp_path, "b.wit", "package common:b;\n\nworld shared {\n  export bar;\n}\n"
+    )
 
     exit_code = cli.main(tmp_path)
     err = capsys.readouterr().err
@@ -83,7 +89,9 @@ def test_main_reports_invocation_failure(tmp_path, monkeypatch, capsys):
     write_valid_contract(tmp_path)
     write_component(tmp_path, "python", "task-component")
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
 
     def raise_call(*args, **kwargs):
         raise RuntimeError("boom")
@@ -101,7 +109,9 @@ def test_main_passes_when_actual_matches_expected(tmp_path, monkeypatch, capsys)
     write_valid_contract(tmp_path)
     write_component(tmp_path, "python", "task-component")
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
     monkeypatch.setattr(cli, "call_function", lambda *a, **k: 0)
 
     exit_code = cli.main(tmp_path)
@@ -112,11 +122,15 @@ def test_main_passes_when_actual_matches_expected(tmp_path, monkeypatch, capsys)
     assert "OK: 1/1 tests passed across 1 implementation(s)." in out
 
 
-def test_main_reports_mismatch_between_actual_and_expected(tmp_path, monkeypatch, capsys):
+def test_main_reports_mismatch_between_actual_and_expected(
+    tmp_path, monkeypatch, capsys
+):
     write_valid_contract(tmp_path)
     write_component(tmp_path, "python", "task-component")
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
     monkeypatch.setattr(cli, "call_function", lambda *a, **k: 99)
 
     exit_code = cli.main(tmp_path)
@@ -127,7 +141,9 @@ def test_main_reports_mismatch_between_actual_and_expected(tmp_path, monkeypatch
     assert "FAIL [python] 1/1 failed" in out
 
 
-def test_main_structured_return_value_normalized_before_comparison(tmp_path, monkeypatch, capsys):
+def test_main_structured_return_value_normalized_before_comparison(
+    tmp_path, monkeypatch, capsys
+):
     """A component return value structurally equivalent to ``expected`` but
     differently typed (e.g. a WIT record surfaced as a dataclass instance)
     is normalized to a plain dict before comparison, so it counts as a
@@ -147,7 +163,9 @@ def test_main_structured_return_value_normalized_before_comparison(tmp_path, mon
     write_suite_schema(tmp_path)
     write_task_entity_schema(tmp_path)
     write_function_schema(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         returns={
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -156,7 +174,9 @@ def test_main_structured_return_value_normalized_before_comparison(tmp_path, mon
         },
     )
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": {"name": "Task 1"}}],
     )
     write_component(tmp_path, "python", "task-component")
@@ -164,7 +184,9 @@ def test_main_structured_return_value_normalized_before_comparison(tmp_path, mon
     record_cls = make_dataclass("Record", ["name"])
     structured_return = record_cls(name="Task 1")
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
     monkeypatch.setattr(cli, "call_function", lambda *a, **k: structured_return)
 
     exit_code = cli.main(tmp_path)
@@ -174,7 +196,9 @@ def test_main_structured_return_value_normalized_before_comparison(tmp_path, mon
     assert "OK   [python] 1/1 passed" in out
 
 
-def test_main_runs_suite_only_against_worlds_that_export_its_interface(tmp_path, monkeypatch, capsys):
+def test_main_runs_suite_only_against_worlds_that_export_its_interface(
+    tmp_path, monkeypatch, capsys
+):
     """A suite runs only against the world(s) that export its interface --
     never the full Cartesian product of every suite and every world
     (docs/refactoring-plan.md Phase 2)."""
@@ -193,14 +217,18 @@ def test_main_runs_suite_only_against_worlds_that_export_its_interface(tmp_path,
     write_task_entity_schema(tmp_path)
     write_function_schema(tmp_path, "task-collections", "count-tasks")
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     write_component(tmp_path, "python", "world-a")
     # No component for world-b at all -- it must never be touched, since
     # this suite's interface is not among its exports.
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
     monkeypatch.setattr(cli, "call_function", lambda *a, **k: 0)
 
     exit_code = cli.main(tmp_path)
@@ -218,11 +246,15 @@ def test_main_hard_fails_when_no_world_exports_the_suites_interface(tmp_path, ca
     touched (docs/refactoring-plan.md Phase 2 and Phase 3) -- never a
     silent skip."""
     write_wit_file(
-        tmp_path, "tasks.wit", "package common:tasks;\n\nworld w {\n  export other-iface;\n}\n"
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\nworld w {\n  export other-iface;\n}\n",
     )
     write_suite_schema(tmp_path)
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     write_component(tmp_path, "python", "w")
@@ -234,11 +266,17 @@ def test_main_hard_fails_when_no_world_exports_the_suites_interface(tmp_path, ca
     assert "interface 'task-collections' is not exported by any discovered world" in err
 
 
-def test_main_hard_fails_when_suite_function_not_declared_in_wit_interface(tmp_path, capsys):
-    write_world(tmp_path, "task-component")  # declares task-collections.count-tasks only
+def test_main_hard_fails_when_suite_function_not_declared_in_wit_interface(
+    tmp_path, capsys
+):
+    write_world(
+        tmp_path, "task-component"
+    )  # declares task-collections.count-tasks only
     write_suite_schema(tmp_path)
     write_suite(
-        tmp_path, "task-collections", "not-a-real-function",
+        tmp_path,
+        "task-collections",
+        "not-a-real-function",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     write_component(tmp_path, "python", "task-component")
@@ -270,7 +308,9 @@ def test_main_hard_fails_before_running_any_suite_when_one_interface_is_unexport
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "iface-a", "fn-a",
+        tmp_path,
+        "iface-a",
+        "fn-a",
         parameters={
             "type": "object",
             "properties": {"x": {"type": "string"}},
@@ -279,12 +319,24 @@ def test_main_hard_fails_before_running_any_suite_when_one_interface_is_unexport
         },
         returns={"type": "string"},
     )
-    write_suite(tmp_path, "iface-a", "fn-a", [{"description": "a", "input": {"x": "hi"}, "expected": "hi"}])
-    write_suite(tmp_path, "iface-b", "fn-b", [{"description": "b", "input": {"y": 1}, "expected": 1}])
+    write_suite(
+        tmp_path,
+        "iface-a",
+        "fn-a",
+        [{"description": "a", "input": {"x": "hi"}, "expected": "hi"}],
+    )
+    write_suite(
+        tmp_path,
+        "iface-b",
+        "fn-b",
+        [{"description": "b", "input": {"y": 1}, "expected": 1}],
+    )
     write_component(tmp_path, "python", "w")
 
     def boom(engine, wasm_path):
-        raise AssertionError("no component may be instantiated when any contract is invalid")
+        raise AssertionError(
+            "no component may be instantiated when any contract is invalid"
+        )
 
     monkeypatch.setattr(cli, "instantiate_component", boom)
 
@@ -296,19 +348,25 @@ def test_main_hard_fails_before_running_any_suite_when_one_interface_is_unexport
     assert "fn-a" not in result.out
 
 
-def test_main_never_instantiates_a_component_when_contracts_are_invalid(tmp_path, monkeypatch, capsys):
+def test_main_never_instantiates_a_component_when_contracts_are_invalid(
+    tmp_path, monkeypatch, capsys
+):
     """End-to-end proof of the Phase 3 "Done when" criterion: an invalid
     contract fails before any component is invoked."""
     write_world(tmp_path, "task-component")
     write_suite_schema(tmp_path)
     write_suite(
-        tmp_path, "task-collections", "not-a-real-function",
+        tmp_path,
+        "task-collections",
+        "not-a-real-function",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     write_component(tmp_path, "python", "task-component")
 
     def boom(engine, wasm_path):
-        raise AssertionError("instantiate_component must not be called when contracts are invalid")
+        raise AssertionError(
+            "instantiate_component must not be called when contracts are invalid"
+        )
 
     monkeypatch.setattr(cli, "instantiate_component", boom)
 
@@ -320,7 +378,9 @@ def test_main_never_instantiates_a_component_when_contracts_are_invalid(tmp_path
     assert "function 'not-a-real-function' is not declared" in err
 
 
-def test_main_uses_wit_declared_param_order_not_json_insertion_order(tmp_path, monkeypatch, capsys):
+def test_main_uses_wit_declared_param_order_not_json_insertion_order(
+    tmp_path, monkeypatch, capsys
+):
     """End to end: positional args are built from the WIT function's
     declared parameter order, not the JSON test input's own key order
     (docs/refactoring-plan.md Phase 2)."""
@@ -335,7 +395,9 @@ def test_main_uses_wit_declared_param_order_not_json_insertion_order(tmp_path, m
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "ordering", "combine",
+        tmp_path,
+        "ordering",
+        "combine",
         parameters={
             "type": "object",
             "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
@@ -346,7 +408,9 @@ def test_main_uses_wit_declared_param_order_not_json_insertion_order(tmp_path, m
     )
     # JSON insertion order is a, b -- the reverse of the declared params.
     write_suite(
-        tmp_path, "ordering", "combine",
+        tmp_path,
+        "ordering",
+        "combine",
         [{"description": "d", "input": {"a": "A", "b": "B"}, "expected": "BA"}],
     )
     write_component(tmp_path, "python", "w")
@@ -357,7 +421,9 @@ def test_main_uses_wit_declared_param_order_not_json_insertion_order(tmp_path, m
         captured["args"] = args
         return args[0] + args[1]
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
     monkeypatch.setattr(cli, "call_function", fake_call_function)
 
     exit_code = cli.main(tmp_path)
@@ -366,7 +432,9 @@ def test_main_uses_wit_declared_param_order_not_json_insertion_order(tmp_path, m
     assert captured["args"] == ["B", "A"]
 
 
-def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(tmp_path, monkeypatch, capsys):
+def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(
+    tmp_path, monkeypatch, capsys
+):
     """Two WIT packages in separate files, each with its own interface and
     suite, are routed to the correct component/world -- not mixed
     (docs/refactoring-plan.md Phase 2)."""
@@ -384,7 +452,9 @@ def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(tmp_path, m
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "iface-a", "fn-a",
+        tmp_path,
+        "iface-a",
+        "fn-a",
         parameters={
             "type": "object",
             "properties": {"x": {"type": "string"}},
@@ -394,7 +464,9 @@ def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(tmp_path, m
         returns={"type": "string"},
     )
     write_function_schema(
-        tmp_path, "iface-b", "fn-b",
+        tmp_path,
+        "iface-b",
+        "fn-b",
         parameters={
             "type": "object",
             "properties": {"y": {"type": "string"}},
@@ -403,8 +475,18 @@ def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(tmp_path, m
         },
         returns={"type": "string"},
     )
-    write_suite(tmp_path, "iface-a", "fn-a", [{"description": "d-a", "input": {"x": "A"}, "expected": "A"}])
-    write_suite(tmp_path, "iface-b", "fn-b", [{"description": "d-b", "input": {"y": "B"}, "expected": "B"}])
+    write_suite(
+        tmp_path,
+        "iface-a",
+        "fn-a",
+        [{"description": "d-a", "input": {"x": "A"}, "expected": "A"}],
+    )
+    write_suite(
+        tmp_path,
+        "iface-b",
+        "fn-b",
+        [{"description": "d-b", "input": {"y": "B"}, "expected": "B"}],
+    )
     write_component(tmp_path, "python", "world-a")
     write_component(tmp_path, "python", "world-b")
 
@@ -414,7 +496,9 @@ def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(tmp_path, m
         seen_exports.append(interface_export)
         return args[0]
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
     monkeypatch.setattr(cli, "call_function", fake_call_function)
 
     exit_code = cli.main(tmp_path)
@@ -430,7 +514,9 @@ def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(tmp_path, m
 # --- targets execution metadata (docs/refactoring-plan.md Phase 4) ----------
 
 
-def test_main_skips_native_only_suite_explicitly_without_counting_it(tmp_path, monkeypatch, capsys):
+def test_main_skips_native_only_suite_explicitly_without_counting_it(
+    tmp_path, monkeypatch, capsys
+):
     """A suite whose ``targets`` exclude ``component`` is never run against
     components: it is announced with an explicit SKIP line (a declaration,
     not a silent skip), counts as neither pass nor fail, and no component
@@ -440,7 +526,9 @@ def test_main_skips_native_only_suite_explicitly_without_counting_it(tmp_path, m
     write_task_entity_schema(tmp_path)
     write_function_schema(tmp_path, "task-collections", "count-tasks")
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
         targets=["native"],
     )
@@ -468,13 +556,17 @@ def test_main_runs_suite_whose_targets_include_component(tmp_path, monkeypatch, 
     write_task_entity_schema(tmp_path)
     write_function_schema(tmp_path, "task-collections", "count-tasks")
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
         targets=["native", "component"],
     )
     write_component(tmp_path, "python", "task-component")
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
     monkeypatch.setattr(cli, "call_function", lambda *a, **k: 0)
 
     exit_code = cli.main(tmp_path)
@@ -485,7 +577,9 @@ def test_main_runs_suite_whose_targets_include_component(tmp_path, monkeypatch, 
     assert "OK: 1/1 tests passed across 1 implementation(s)." in out
 
 
-def test_main_native_only_skip_does_not_affect_other_suites(tmp_path, monkeypatch, capsys):
+def test_main_native_only_skip_does_not_affect_other_suites(
+    tmp_path, monkeypatch, capsys
+):
     write_wit_file(
         tmp_path,
         "tasks.wit",
@@ -502,10 +596,16 @@ def test_main_native_only_skip_does_not_affect_other_suites(tmp_path, monkeypatc
         "additionalProperties": False,
     }
     write_function_schema(
-        tmp_path, "iface-a", "fn-a", parameters=string_params, returns={"type": "string"}
+        tmp_path,
+        "iface-a",
+        "fn-a",
+        parameters=string_params,
+        returns={"type": "string"},
     )
     write_function_schema(
-        tmp_path, "iface-b", "fn-b",
+        tmp_path,
+        "iface-b",
+        "fn-b",
         parameters={
             "type": "object",
             "properties": {"y": {"type": "string"}},
@@ -514,16 +614,27 @@ def test_main_native_only_skip_does_not_affect_other_suites(tmp_path, monkeypatc
         },
         returns={"type": "string"},
     )
-    write_suite(tmp_path, "iface-a", "fn-a", [{"description": "a", "input": {"x": "A"}, "expected": "A"}])
     write_suite(
-        tmp_path, "iface-b", "fn-b",
+        tmp_path,
+        "iface-a",
+        "fn-a",
+        [{"description": "a", "input": {"x": "A"}, "expected": "A"}],
+    )
+    write_suite(
+        tmp_path,
+        "iface-b",
+        "fn-b",
         [{"description": "b", "input": {"y": "B"}, "expected": "B"}],
         targets=["native"],
     )
     write_component(tmp_path, "python", "w")
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
-    monkeypatch.setattr(cli, "call_function", lambda store, instance, export, fn, args: args[0])
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
+    monkeypatch.setattr(
+        cli, "call_function", lambda store, instance, export, fn, args: args[0]
+    )
 
     exit_code = cli.main(tmp_path)
     out = capsys.readouterr().out
@@ -537,7 +648,9 @@ def test_main_native_only_skip_does_not_affect_other_suites(tmp_path, monkeypatc
 # --- fixture resolution before execution ------------------------------------
 
 
-def test_main_resolves_fixtures_before_building_call_arguments(tmp_path, monkeypatch, capsys):
+def test_main_resolves_fixtures_before_building_call_arguments(
+    tmp_path, monkeypatch, capsys
+):
     """End to end: the component receives the DECODED fixture text as its
     argument -- never the ``$fixture`` descriptor object
     (docs/refactoring-plan.md Phase 4)."""
@@ -552,7 +665,9 @@ def test_main_resolves_fixtures_before_building_call_arguments(tmp_path, monkeyp
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "pages", "parse-page",
+        tmp_path,
+        "pages",
+        "parse-page",
         parameters={
             "type": "object",
             "properties": {"html": {"type": "string"}},
@@ -565,11 +680,15 @@ def test_main_resolves_fixtures_before_building_call_arguments(tmp_path, monkeyp
     fixtures.mkdir(parents=True)
     (fixtures / "page.html").write_text("<html>fixture</html>")
     write_suite(
-        tmp_path, "pages", "parse-page",
+        tmp_path,
+        "pages",
+        "parse-page",
         [
             {
                 "description": "fixture-driven",
-                "input": {"html": {"$fixture": "common/fixtures/html-parser/page.html"}},
+                "input": {
+                    "html": {"$fixture": "common/fixtures/html-parser/page.html"}
+                },
                 "expected": "<html>fixture</html>",
             }
         ],
@@ -582,7 +701,9 @@ def test_main_resolves_fixtures_before_building_call_arguments(tmp_path, monkeyp
         captured["args"] = args
         return args[0]
 
-    monkeypatch.setattr(cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance"))
+    monkeypatch.setattr(
+        cli, "instantiate_component", lambda engine, wasm_path: ("store", "instance")
+    )
     monkeypatch.setattr(cli, "call_function", fake_call_function)
 
     exit_code = cli.main(tmp_path)

@@ -160,6 +160,12 @@ def discover_test_suites(root: Path) -> list[TestSuite]:
         raw_targets = data.get("targets")
         targets = tuple(raw_targets) if raw_targets is not None else None
         suites.append(
-            TestSuite(path=path, interface=interface, function=function, tests=tests, targets=targets)
+            TestSuite(
+                path=path,
+                interface=interface,
+                function=function,
+                tests=tests,
+                targets=targets,
+            )
         )
     return suites

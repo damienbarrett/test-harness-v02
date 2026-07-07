@@ -10,6 +10,10 @@ setup:
 test:
     ./lifecycle.sh test
 
+# Check formatting (rustfmt) and lint with warnings denied (clippy)
+lint:
+    ./lifecycle.sh lint
+
 # Run tests with coverage (100% threshold)
 coverage:
     ./lifecycle.sh coverage
@@ -21,3 +25,7 @@ clean:
 # Remove generated outputs and setup artifacts
 purge: clean
     ./lifecycle.sh purge
+
+# Upgrade locked dependencies and regenerate the lockfile
+update:
+    ./lifecycle.sh update

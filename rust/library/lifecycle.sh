@@ -25,6 +25,21 @@ cmd_test() {
   cargo test --locked --offline --tests
 }
 
+# Formatter + lint gate (Phase 9 of docs/refactoring-plan.md). Both tools
+# come from the Nix rust toolchain (rust/flake.nix minimal profile + clippy/
+# rustfmt extensions), not a Cargo dependency.
+cmd_lint() {
+  cargo fmt --check
+  cargo clippy --all-targets --locked --offline -- -D warnings
+}
+
+# Explicitly upgrades locked dependencies and regenerates the lockfile
+# (constitution.md §4). Network access is expected here, unlike the
+# --locked --offline verbs above.
+cmd_update() {
+  cargo update
+}
+
 cmd_coverage() {
   cargo llvm-cov clean --workspace
   cargo llvm-cov --locked --offline --tests --fail-under-lines 100 --fail-under-functions 100 --fail-under-regions 100
@@ -55,9 +70,11 @@ verb="${1:-}"
 case "$verb" in
   setup) cmd_setup ;;
   test) cmd_test ;;
+  lint) cmd_lint ;;
   coverage) cmd_coverage ;;
   clean) cmd_clean ;;
   purge) cmd_purge ;;
+  update) cmd_update ;;
   *)
     echo "lifecycle.sh: unknown verb '$verb'" >&2
     exit 64

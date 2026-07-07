@@ -3,7 +3,10 @@
 // check-contracts.py), not duplicated per language -- this module only
 // loads the declarative test data itself for language-level execution
 // tests to run against a real implementation.
-const TEST_DATA_URL = new URL("../../common/functions/task-collections/count-tasks.test.json", import.meta.url);
+const TEST_DATA_URL = new URL(
+  "../../common/functions/task-collections/count-tasks.test.json",
+  import.meta.url,
+);
 
 async function readText(url) {
   if (typeof Deno !== "undefined") {

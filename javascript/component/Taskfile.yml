@@ -22,6 +22,11 @@ tasks:
     cmds:
       - ./lifecycle.sh test
 
+  lint:
+    desc: Check formatting (prettier), lint (eslint), and audit dependencies
+    cmds:
+      - ./lifecycle.sh lint
+
   coverage:
     desc: Run tests with coverage (builds first, 100% threshold)
     deps: [build]
@@ -38,3 +43,8 @@ tasks:
     cmds:
       - task: clean
       - ./lifecycle.sh purge
+
+  update:
+    desc: Upgrade locked dependencies and regenerate the lockfile
+    cmds:
+      - ./lifecycle.sh update

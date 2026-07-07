@@ -14,6 +14,10 @@ build:
 test: build
     ./lifecycle.sh test
 
+# Check formatting and lint with warnings denied (builds first - bindings.rs is generated)
+lint: build
+    ./lifecycle.sh lint
+
 # Run tests with coverage (100% threshold)
 coverage:
     ./lifecycle.sh coverage
@@ -25,3 +29,7 @@ clean:
 # Remove generated outputs and setup artifacts
 purge: clean
     ./lifecycle.sh purge
+
+# Upgrade locked dependencies and regenerate the lockfile
+update:
+    ./lifecycle.sh update

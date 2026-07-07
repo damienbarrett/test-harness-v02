@@ -31,7 +31,9 @@ export HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-$HARNESS_DIR/outputs}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$HARNESS_CACHE_DIR/uv}"
 
 cmd_clean() {
-  rm -rf "$HARNESS_OUTPUT_DIR/$lang"
+  # ${VAR:?} guards (SC2115): fail loudly instead of expanding to "/" if a
+  # derived HARNESS_* variable were ever empty.
+  rm -rf "${HARNESS_OUTPUT_DIR:?}/$lang"
 }
 
 # Removes the whole of $HARNESS_DIR (covering the default case, where it is
@@ -40,7 +42,7 @@ cmd_clean() {
 # has been overridden to a directory shared across languages, e.g. by the
 # Apple-container scripts under container/), and Task's own checksum cache.
 cmd_purge() {
-  rm -rf "$HARNESS_DIR" "$HARNESS_CACHE_DIR/$lang" "$HARNESS_OUTPUT_DIR/$lang" "$script_dir/.task"
+  rm -rf "$HARNESS_DIR" "${HARNESS_CACHE_DIR:?}/$lang" "${HARNESS_OUTPUT_DIR:?}/$lang" "$script_dir/.task"
 }
 
 # library:*/component:* delegate verbs: run the child directory's own `task`
@@ -59,15 +61,19 @@ case "$verb" in
   purge) cmd_purge ;;
   library-setup) delegate library setup ;;
   library-test) delegate library test ;;
+  library-lint) delegate library lint ;;
   library-coverage) delegate library coverage ;;
   library-clean) delegate library clean ;;
   library-purge) delegate library purge ;;
+  library-update) delegate library update ;;
   component-setup) delegate component setup ;;
   component-build) delegate component build ;;
   component-test) delegate component test ;;
+  component-lint) delegate component lint ;;
   component-coverage) delegate component coverage ;;
   component-clean) delegate component clean ;;
   component-purge) delegate component purge ;;
+  component-update) delegate component update ;;
   *)
     echo "lifecycle.sh: unknown verb '$verb'" >&2
     exit 64

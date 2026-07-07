@@ -83,11 +83,28 @@ _WIT_FLOAT_TYPES = frozenset({"float32", "float64"})
 _WIT_TYPE_KEYWORDS = frozenset(
     {
         "bool",
-        "s8", "s16", "s32", "s64",
-        "u8", "u16", "u32", "u64",
-        "f32", "f64", "float32", "float64",
-        "char", "string",
-        "list", "option", "result", "tuple", "borrow", "own", "stream", "future",
+        "s8",
+        "s16",
+        "s32",
+        "s64",
+        "u8",
+        "u16",
+        "u32",
+        "u64",
+        "f32",
+        "f64",
+        "float32",
+        "float64",
+        "char",
+        "string",
+        "list",
+        "option",
+        "result",
+        "tuple",
+        "borrow",
+        "own",
+        "stream",
+        "future",
     }
 )
 
@@ -155,11 +172,15 @@ def _named_types_in(type_text: str) -> set[str]:
     """Bareword identifiers in a WIT type expression that aren't WIT
     keywords/primitives -- candidate named (record) types."""
     return {
-        token for token in _TYPE_IDENTIFIER_RE.findall(type_text) if token not in _WIT_TYPE_KEYWORDS
+        token
+        for token in _TYPE_IDENTIFIER_RE.findall(type_text)
+        if token not in _WIT_TYPE_KEYWORDS
     }
 
 
-def _reachable_records(function: WitFunction, interface: WitInterface) -> dict[str, WitRecord]:
+def _reachable_records(
+    function: WitFunction, interface: WitInterface
+) -> dict[str, WitRecord]:
     """Every WIT record type reachable from ``function``'s declared
     parameter types, transitively through the fields of any record found
     along the way (e.g. ``tasks: list<task>`` reaches ``task``)."""
@@ -183,7 +204,9 @@ def _reachable_records(function: WitFunction, interface: WitInterface) -> dict[s
     return found
 
 
-def _check_record_conformance(root: Path, records: dict[str, WitRecord], rel: str) -> list[str]:
+def _check_record_conformance(
+    root: Path, records: dict[str, WitRecord], rel: str
+) -> list[str]:
     """WIT is authoritative (see module docstring): if
     ``common/entities/{record-name}-schema.json`` exists for a reachable
     WIT record, its declared ``properties`` keys must equal the record's
@@ -275,12 +298,16 @@ def _validate_suite_file(
     function = raw["function"]
     expected_function = path.name.removesuffix(".test.json")
     if function != expected_function:
-        return [f"{rel}: function '{function}' does not match filename stem '{expected_function}'"]
+        return [
+            f"{rel}: function '{function}' does not match filename stem '{expected_function}'"
+        ]
 
     interface = path.parent.name
     matching_worlds = [world for world in worlds if world.exports_interface(interface)]
     if not matching_worlds:
-        return [f"{rel}: interface '{interface}' is not exported by any discovered world"]
+        return [
+            f"{rel}: interface '{interface}' is not exported by any discovered world"
+        ]
 
     signature = None
     chosen_world = None
@@ -305,22 +332,30 @@ def _validate_suite_file(
 
     function_schema_rel = function_schema_path.relative_to(root).as_posix()
     function_schema = schemas_by_path.get(function_schema_rel)
-    if function_schema is None:  # pragma: no cover - defensive; scan always finds this file
+    if (
+        function_schema is None
+    ):  # pragma: no cover - defensive; scan always finds this file
         function_schema = json.loads(function_schema_path.read_text())
 
     errors: list[str] = []
 
     errors.extend(
-        _check_numeric_conformance(signature.returns, function_schema.get("returns", {}), rel, function)
+        _check_numeric_conformance(
+            signature.returns, function_schema.get("returns", {}), rel, function
+        )
     )
 
-    assert chosen_world is not None  # a signature was found, so its world was recorded too
+    assert (
+        chosen_world is not None
+    )  # a signature was found, so its world was recorded too
     interface_obj = chosen_world.interfaces.get(interface)
     if interface_obj is not None:
         reachable = _reachable_records(signature, interface_obj)
         errors.extend(_check_record_conformance(root, reachable, rel))
 
-    params_validator = _validator_for_ref(registry, f"{function_schema_rel}#/parameters")
+    params_validator = _validator_for_ref(
+        registry, f"{function_schema_rel}#/parameters"
+    )
     returns_validator = _validator_for_ref(registry, f"{function_schema_rel}#/returns")
 
     descriptions_seen: set[str] = set()
@@ -345,10 +380,14 @@ def _validate_suite_file(
             errors.append(f"{rel}: case '{description}': {exc}")
         else:
             for err in params_validator.iter_errors(materialized_input):
-                errors.append(f"{rel}: case '{description}': input invalid: {err.message}")
+                errors.append(
+                    f"{rel}: case '{description}': input invalid: {err.message}"
+                )
 
         for err in returns_validator.iter_errors(case["expected"]):
-            errors.append(f"{rel}: case '{description}': expected invalid: {err.message}")
+            errors.append(
+                f"{rel}: case '{description}': expected invalid: {err.message}"
+            )
 
     if duplicates:
         errors.append(f"{rel}: duplicate case description(s): {sorted(duplicates)}")
@@ -378,7 +417,9 @@ def validate_contracts(root: Path) -> list[str]:
 
     errors: list[str] = []
     for suite_path in sorted(functions_dir.rglob("*.test.json")):
-        errors.extend(_validate_suite_file(root, suite_path, worlds, registry, schemas_by_path))
+        errors.extend(
+            _validate_suite_file(root, suite_path, worlds, registry, schemas_by_path)
+        )
     return errors
 
 

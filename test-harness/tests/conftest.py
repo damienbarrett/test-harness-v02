@@ -18,7 +18,9 @@ def write_wit_file(root: Path, filename: str, text: str) -> Path:
     return path
 
 
-def write_world(root: Path, world_name: str, exported_interface: str = "task-collections") -> Path:
+def write_world(
+    root: Path, world_name: str, exported_interface: str = "task-collections"
+) -> Path:
     """Write a single-package WIT file with one world exporting one
     interface that declares a ``count-tasks(tasks: list<task>) -> u32``
     function -- the same shape as the real ``common/wit/tasks.wit``
@@ -56,7 +58,9 @@ def write_suite(
     return path
 
 
-def write_component(root: Path, lang: str, world_name: str, content: bytes = b"fake-wasm") -> Path:
+def write_component(
+    root: Path, lang: str, world_name: str, content: bytes = b"fake-wasm"
+) -> Path:
     d = root / lang / "component"
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"{world_name}.wasm"
@@ -81,7 +85,9 @@ def write_suite_schema(root: Path) -> Path:
     return dest
 
 
-def write_task_entity_schema(root: Path, *, properties: dict | None = None, required: list | None = None) -> Path:
+def write_task_entity_schema(
+    root: Path, *, properties: dict | None = None, required: list | None = None
+) -> Path:
     """Write ``common/entities/task-schema.json`` -- by default the same
     shape as the real contract's ``task`` record (a single ``name: string``
     field), matching ``write_world``'s default WIT text."""
@@ -90,7 +96,9 @@ def write_task_entity_schema(root: Path, *, properties: dict | None = None, requ
         "$id": "common/entities/task-schema.json",
         "type": "object",
         "title": "Task",
-        "properties": properties if properties is not None else {"name": {"type": "string"}},
+        "properties": properties
+        if properties is not None
+        else {"name": {"type": "string"}},
         "required": required if required is not None else ["name"],
         "additionalProperties": False,
     }

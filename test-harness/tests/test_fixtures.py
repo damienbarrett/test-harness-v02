@@ -34,7 +34,9 @@ def test_fixture_resolution_conformance(case, tmp_path, monkeypatch):
             resolve_fixtures(value, tmp_path, case.max_bytes)
         assert case.expect_error in str(exc_info.value)
     else:
-        assert resolve_fixtures(value, tmp_path, case.max_bytes) == {"html": case.expect_text}
+        assert resolve_fixtures(value, tmp_path, case.max_bytes) == {
+            "html": case.expect_text
+        }
 
 
 # --- recursive walk semantics ----------------------------------------------

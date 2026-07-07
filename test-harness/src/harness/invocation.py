@@ -83,7 +83,9 @@ def call_function(
 
     func_idx = instance.get_export_index(store, function_name, iface_idx)
     if func_idx is None:
-        raise RuntimeError(f"function '{function_name}' not found in '{interface_export}'")
+        raise RuntimeError(
+            f"function '{function_name}' not found in '{interface_export}'"
+        )
 
     func = instance.get_func(store, func_idx)
     if func is None:

@@ -40,14 +40,24 @@ tasks:
       - task: rust-build
 
   test:
-    desc: Run all tests
+    desc: Run all tests (contract validation and quality gates first)
     cmds:
       - task: contracts:check
+      - task: lint
       - task: python-test
       - task: javascript-test
       - task: rust-test
       - task: test-harness-test
       - task: wasm:test
+
+  lint:
+    desc: Run all formatter, lint, dependency-audit, and shellcheck gates
+    cmds:
+      - task: python-lint
+      - task: javascript-lint
+      - task: rust-lint
+      - task: test-harness-lint
+      - task: check:shell
 
   coverage:
     desc: Run all tests with coverage
@@ -75,6 +85,14 @@ tasks:
       - task: test-harness-purge
       - ./lifecycle.sh purge
 
+  update:
+    desc: Upgrade locked dependencies and regenerate lockfiles everywhere
+    cmds:
+      - task: python-update
+      - task: javascript-update
+      - task: rust-update
+      - task: test-harness-update
+
   python-setup:
     cmds: [./lifecycle.sh python-setup]
   javascript-setup:
@@ -99,6 +117,15 @@ tasks:
     cmds: [./lifecycle.sh rust-test]
   test-harness-test:
     cmds: [./lifecycle.sh test-harness-test]
+
+  python-lint:
+    cmds: [./lifecycle.sh python-lint]
+  javascript-lint:
+    cmds: [./lifecycle.sh javascript-lint]
+  rust-lint:
+    cmds: [./lifecycle.sh rust-lint]
+  test-harness-lint:
+    cmds: [./lifecycle.sh test-harness-lint]
 
   python-coverage:
     cmds: [./lifecycle.sh python-coverage]
@@ -127,6 +154,15 @@ tasks:
   test-harness-purge:
     cmds: [./lifecycle.sh test-harness-purge]
 
+  python-update:
+    cmds: [./lifecycle.sh python-update]
+  javascript-update:
+    cmds: [./lifecycle.sh javascript-update]
+  rust-update:
+    cmds: [./lifecycle.sh rust-update]
+  test-harness-update:
+    cmds: [./lifecycle.sh test-harness-update]
+
   wasm:test:
     desc: Run unified WASM contract tests across all implementations (builds first)
     deps: [build]
@@ -142,6 +178,11 @@ tasks:
     desc: Validate common/ contract suites before any component is invoked
     cmds:
       - ./lifecycle.sh contracts:check
+
+  check:shell:
+    desc: ShellCheck every tracked shell script in the repository
+    cmds:
+      - ./lifecycle.sh check:shell
 
   check:lifecycle:
     desc: Verify clean/purge state ownership (destructive, restores via setup+build after; not part of test)

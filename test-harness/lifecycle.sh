@@ -38,6 +38,40 @@ cmd_check_contracts() {
   ./check-contracts.py
 }
 
+# Formatter + lint gate (Phase 9 of docs/refactoring-plan.md). ruff comes
+# from the Nix dev shell (test-harness/flake.nix), not from this project's
+# locked dependencies - see that flake for why (prebuilt manylinux wheels
+# cannot execute on this repo's FHS-less NixOS guest). [tool.ruff] in
+# pyproject.toml excludes the three POSIX-sh entry shims kept at .py paths.
+cmd_lint() {
+  ruff format --check .
+  ruff check .
+}
+
+# ShellCheck gate over every tracked shell script in the repository (Phase 9
+# of docs/refactoring-plan.md): all tracked *.sh files (lifecycle.sh scripts,
+# container/ scripts) plus bin/dx-worktree, a bash script without the .sh
+# suffix. This is a repo-wide check that happens to live in the harness
+# because shellcheck ships in this directory's dev shell; the root `lint`
+# aggregator invokes it once per run via the root `check:shell` /
+# `check-shell` wrapper.
+cmd_check_shell() {
+  (
+    cd "$script_dir/.."
+    git ls-files -z -- '*.sh' bin/dx-worktree | xargs -0 shellcheck
+    echo "OK: shellcheck passed for all tracked shell scripts."
+  )
+}
+
+# Explicitly upgrades locked dependencies and regenerates the lockfile
+# (constitution.md §4), then syncs the environment (the dev dependency
+# group is included by default, matching `setup`). Network access is
+# expected here.
+cmd_update() {
+  uv lock --upgrade
+  uv sync
+}
+
 cmd_coverage() {
   uv run --locked pytest --cov=harness --cov-report=term-missing --cov-fail-under=100
 }
@@ -59,12 +93,15 @@ verb="${1:-}"
 case "$verb" in
   setup) cmd_setup ;;
   test) cmd_test ;;
+  lint) cmd_lint ;;
   wasm-test) cmd_wasm_test ;;
   check-runners) cmd_check_runners ;;
   check-contracts) cmd_check_contracts ;;
+  check-shell) cmd_check_shell ;;
   coverage) cmd_coverage ;;
   clean) cmd_clean ;;
   purge) cmd_purge ;;
+  update) cmd_update ;;
   *)
     echo "lifecycle.sh: unknown verb '$verb'" >&2
     exit 64

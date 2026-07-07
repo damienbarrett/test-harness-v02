@@ -16,6 +16,15 @@
             pkgs.uv
             pkgs.go-task
             pkgs.just
+            # ruff, shellcheck (Phase 9 of docs/refactoring-plan.md): both
+            # provided by nixpkgs rather than as uv-managed project
+            # dependencies/ad-hoc downloads. See python/flake.nix for why
+            # ruff specifically must come from Nix in this guest OS (no FHS
+            # loader for prebuilt native wheels). shellcheck has no uv/npm
+            # equivalent home in this repo at all - it backs the `check-shell`
+            # verb that scans every tracked shell script repo-wide.
+            pkgs.ruff
+            pkgs.shellcheck
           ];
         };
       });

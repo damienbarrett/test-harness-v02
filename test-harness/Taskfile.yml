@@ -16,6 +16,11 @@ tasks:
     cmds:
       - ./lifecycle.sh test
 
+  lint:
+    desc: Check formatting (ruff format) and lint (ruff check)
+    cmds:
+      - ./lifecycle.sh lint
+
   check-runners:
     desc: Check Taskfile.yml and justfile parity
     cmds:
@@ -25,6 +30,11 @@ tasks:
     desc: Validate common/ contract suites before any component is invoked
     cmds:
       - ./lifecycle.sh check-contracts
+
+  check-shell:
+    desc: ShellCheck every tracked shell script in the repository
+    cmds:
+      - ./lifecycle.sh check-shell
 
   coverage:
     desc: Run test harness coverage checks
@@ -41,3 +51,8 @@ tasks:
     cmds:
       - task: clean
       - ./lifecycle.sh purge
+
+  update:
+    desc: Upgrade locked dependencies and regenerate the lockfile
+    cmds:
+      - ./lifecycle.sh update

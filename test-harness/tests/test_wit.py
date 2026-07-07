@@ -17,7 +17,9 @@ def test_wit_dir_with_no_wit_files_returns_empty(tmp_path):
 
 def test_only_wit_extension_files_are_scanned(tmp_path):
     write_world(tmp_path, "task-component")
-    (tmp_path / "common" / "wit" / "notes.txt").write_text("world should-be-ignored {\n}\n")
+    (tmp_path / "common" / "wit" / "notes.txt").write_text(
+        "world should-be-ignored {\n}\n"
+    )
     worlds = discover_worlds(tmp_path)
     assert [w.name for w in worlds] == ["task-component"]
 
@@ -69,8 +71,16 @@ def test_multiple_worlds_in_one_package_each_get_their_own_exports(tmp_path):
 
 
 def test_multiple_wit_packages_produce_distinct_namespace_and_package(tmp_path):
-    write_wit_file(tmp_path, "a-pkg.wit", "package common:a;\n\nworld world-a {\n  export foo;\n}\n")
-    write_wit_file(tmp_path, "b-pkg.wit", "package common:b;\n\nworld world-b {\n  export bar;\n}\n")
+    write_wit_file(
+        tmp_path,
+        "a-pkg.wit",
+        "package common:a;\n\nworld world-a {\n  export foo;\n}\n",
+    )
+    write_wit_file(
+        tmp_path,
+        "b-pkg.wit",
+        "package common:b;\n\nworld world-b {\n  export bar;\n}\n",
+    )
     worlds = discover_worlds(tmp_path)
     by_name = {w.name: w for w in worlds}
     assert by_name["world-a"].namespace == "common"
@@ -80,8 +90,12 @@ def test_multiple_wit_packages_produce_distinct_namespace_and_package(tmp_path):
 
 
 def test_duplicate_world_names_across_packages_hard_fail_naming_both(tmp_path):
-    write_wit_file(tmp_path, "a.wit", "package common:a;\n\nworld shared {\n  export foo;\n}\n")
-    write_wit_file(tmp_path, "b.wit", "package common:b;\n\nworld shared {\n  export bar;\n}\n")
+    write_wit_file(
+        tmp_path, "a.wit", "package common:a;\n\nworld shared {\n  export foo;\n}\n"
+    )
+    write_wit_file(
+        tmp_path, "b.wit", "package common:b;\n\nworld shared {\n  export bar;\n}\n"
+    )
     with pytest.raises(DuplicateWorldError) as excinfo:
         discover_worlds(tmp_path)
     message = str(excinfo.value)
@@ -136,7 +150,10 @@ def test_interface_function_params_parsed_in_declared_order(tmp_path):
     world = worlds[0]
     fn = world.function_signature("task-collections", "count-tasks")
     assert fn == WitFunction(
-        name="count-tasks", params=("tasks",), param_types=("list<task>",), returns="u32"
+        name="count-tasks",
+        params=("tasks",),
+        param_types=("list<task>",),
+        returns="u32",
     )
 
 
@@ -362,9 +379,9 @@ def test_two_worlds_in_same_package_share_the_same_interface_definitions(tmp_pat
     )
     worlds = discover_worlds(tmp_path)
     by_name = {w.name: w for w in worlds}
-    assert by_name["world-a"].function_signature("task-collections", "count-tasks").params == (
-        "tasks",
-    )
-    assert by_name["world-b"].function_signature("task-collections", "count-tasks").params == (
-        "tasks",
-    )
+    assert by_name["world-a"].function_signature(
+        "task-collections", "count-tasks"
+    ).params == ("tasks",)
+    assert by_name["world-b"].function_signature(
+        "task-collections", "count-tasks"
+    ).params == ("tasks",)

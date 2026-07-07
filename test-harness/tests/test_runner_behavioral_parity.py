@@ -225,7 +225,9 @@ def test_build_effects_match_between_runners(tmp_path):
 
     assert task_result.returncode == 0, task_result.stderr
     assert just_result.returncode == 0, just_result.stderr
-    assert (task_dir / "build.marker").read_text() == (just_dir / "build.marker").read_text()
+    assert (task_dir / "build.marker").read_text() == (
+        just_dir / "build.marker"
+    ).read_text()
 
 
 def test_env_vars_seen_by_script_match_between_runners(tmp_path):
@@ -447,8 +449,12 @@ def test_overriding_harness_dir_relocates_state_on_both_runners(tmp_path):
     relocated = tmp_path / "elsewhere" / "harness-state"
     extra = {"HARNESS_DIR": str(relocated)}
 
-    task_result = run_runner("task", "build", task_dir, extra_env=extra, clear_env_vars=HARNESS_ENV_VARS)
-    just_result = run_runner("just", "build", just_dir, extra_env=extra, clear_env_vars=HARNESS_ENV_VARS)
+    task_result = run_runner(
+        "task", "build", task_dir, extra_env=extra, clear_env_vars=HARNESS_ENV_VARS
+    )
+    just_result = run_runner(
+        "just", "build", just_dir, extra_env=extra, clear_env_vars=HARNESS_ENV_VARS
+    )
 
     assert task_result.returncode == 0, task_result.stderr
     assert just_result.returncode == 0, just_result.stderr
@@ -465,7 +471,9 @@ def test_harness_clean_keeps_cache_purge_removes_all_on_both_runners(tmp_path):
     just_dir = make_harness_derived_fixture_project(tmp_path / "just-proj")
 
     for runner_name, project in (("task", task_dir), ("just", just_dir)):
-        result = run_runner(runner_name, "build", project, clear_env_vars=HARNESS_ENV_VARS)
+        result = run_runner(
+            runner_name, "build", project, clear_env_vars=HARNESS_ENV_VARS
+        )
         assert result.returncode == 0, result.stderr
 
     for project in (task_dir, just_dir):

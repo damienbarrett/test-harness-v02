@@ -153,7 +153,9 @@ def test_call_function_missing_interface_export_raises():
 
 def test_call_function_missing_function_export_raises():
     instance = FakeInstance(exports={("iface", None): "iface-idx"}, funcs={})
-    with pytest.raises(RuntimeError, match="function 'missing-fn' not found in 'iface'"):
+    with pytest.raises(
+        RuntimeError, match="function 'missing-fn' not found in 'iface'"
+    ):
         call_function("store", instance, "iface", "missing-fn", [])
 
 

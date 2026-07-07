@@ -1,4 +1,10 @@
-from harness.models import TestCase, WitFunction, WitInterface, WitWorld, discover_test_suites
+from harness.models import (
+    TestCase,
+    WitFunction,
+    WitInterface,
+    WitWorld,
+    discover_test_suites,
+)
 
 from .conftest import write_suite
 
@@ -34,7 +40,9 @@ def test_suite_without_targets_has_none(tmp_path):
     """Absent ``targets`` means no restriction -- the suite runs everywhere
     it can."""
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     assert discover_test_suites(tmp_path)[0].targets is None
@@ -42,7 +50,9 @@ def test_suite_without_targets_has_none(tmp_path):
 
 def test_suite_with_targets_parses_them_as_a_tuple(tmp_path):
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
         targets=["native"],
     )
@@ -50,8 +60,12 @@ def test_suite_with_targets_parses_them_as_a_tuple(tmp_path):
 
 
 def test_multiple_suites_discovered_in_sorted_path_order(tmp_path):
-    write_suite(tmp_path, "b-iface", "fn-b", [{"description": "d", "input": {}, "expected": 1}])
-    write_suite(tmp_path, "a-iface", "fn-a", [{"description": "d", "input": {}, "expected": 1}])
+    write_suite(
+        tmp_path, "b-iface", "fn-b", [{"description": "d", "input": {}, "expected": 1}]
+    )
+    write_suite(
+        tmp_path, "a-iface", "fn-a", [{"description": "d", "input": {}, "expected": 1}]
+    )
     suites = discover_test_suites(tmp_path)
     assert [s.interface for s in suites] == ["a-iface", "b-iface"]
 
@@ -118,7 +132,11 @@ def test_suite_with_multiple_cases_preserves_order(tmp_path):
         "count-tasks",
         [
             {"description": "first", "input": {"tasks": []}, "expected": 0},
-            {"description": "second", "input": {"tasks": [{"name": "x"}]}, "expected": 1},
+            {
+                "description": "second",
+                "input": {"tasks": [{"name": "x"}]},
+                "expected": 1,
+            },
         ],
     )
     suites = discover_test_suites(tmp_path)

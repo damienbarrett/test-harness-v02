@@ -27,6 +27,12 @@ tasks:
     cmds:
       - ./lifecycle.sh test
 
+  lint:
+    desc: Check formatting and lint with warnings denied (builds first - bindings.rs is generated)
+    deps: [build]
+    cmds:
+      - ./lifecycle.sh lint
+
   coverage:
     desc: Run tests with coverage (100% threshold)
     cmds:
@@ -42,3 +48,8 @@ tasks:
     cmds:
       - task: clean
       - ./lifecycle.sh purge
+
+  update:
+    desc: Upgrade locked dependencies and regenerate the lockfile
+    cmds:
+      - ./lifecycle.sh update

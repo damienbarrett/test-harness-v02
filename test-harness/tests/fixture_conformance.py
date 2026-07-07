@@ -57,7 +57,11 @@ def _build_unicode(root: Path) -> None:
 
 
 def _build_gzip(root: Path) -> None:
-    _write(root, "html-parser/page.html.gz", gzip.compress("<html>gzipped</html>".encode("utf-8")))
+    _write(
+        root,
+        "html-parser/page.html.gz",
+        gzip.compress("<html>gzipped</html>".encode("utf-8")),
+    )
 
 
 def _build_corrupt_gzip(root: Path) -> None:
@@ -96,7 +100,9 @@ def _build_oversized(root: Path) -> None:
 def _build_gzip_bomb(root: Path) -> None:
     # A few hundred bytes on disk, 256 KiB decompressed: the on-disk size
     # check alone must NOT be enough to accept it.
-    _write(root, "html-parser/bomb.html.gz", gzip.compress(b"\0" * 262144, compresslevel=9))
+    _write(
+        root, "html-parser/bomb.html.gz", gzip.compress(b"\0" * 262144, compresslevel=9)
+    )
 
 
 CONFORMANCE_CASES: list[FixtureConformanceCase] = [
@@ -110,7 +116,10 @@ CONFORMANCE_CASES: list[FixtureConformanceCase] = [
     FixtureConformanceCase(
         name="plain-text-explicit-utf8",
         build=_build_plain,
-        descriptor={"$fixture": "common/fixtures/html-parser/sample.html", "encoding": "utf-8"},
+        descriptor={
+            "$fixture": "common/fixtures/html-parser/sample.html",
+            "encoding": "utf-8",
+        },
         expect_text="<html>plain</html>",
     ),
     FixtureConformanceCase(
@@ -132,7 +141,10 @@ CONFORMANCE_CASES: list[FixtureConformanceCase] = [
     FixtureConformanceCase(
         name="gzip-default-encoding",
         build=_build_gzip,
-        descriptor={"$fixture": "common/fixtures/html-parser/page.html.gz", "compression": "gzip"},
+        descriptor={
+            "$fixture": "common/fixtures/html-parser/page.html.gz",
+            "compression": "gzip",
+        },
         expect_text="<html>gzipped</html>",
     ),
     # --- missing / wrong file ---------------------------------------------
@@ -223,19 +235,28 @@ CONFORMANCE_CASES: list[FixtureConformanceCase] = [
     FixtureConformanceCase(
         name="unknown-descriptor-key",
         build=_build_plain,
-        descriptor={"$fixture": "common/fixtures/html-parser/sample.html", "compresion": "gzip"},
+        descriptor={
+            "$fixture": "common/fixtures/html-parser/sample.html",
+            "compresion": "gzip",
+        },
         expect_error="unknown fixture descriptor key(s) ['compresion']",
     ),
     FixtureConformanceCase(
         name="unsupported-compression-value",
         build=_build_gzip,
-        descriptor={"$fixture": "common/fixtures/html-parser/page.html.gz", "compression": "zstd"},
+        descriptor={
+            "$fixture": "common/fixtures/html-parser/page.html.gz",
+            "compression": "zstd",
+        },
         expect_error="unsupported compression 'zstd'",
     ),
     FixtureConformanceCase(
         name="unsupported-encoding-value",
         build=_build_plain,
-        descriptor={"$fixture": "common/fixtures/html-parser/sample.html", "encoding": "latin-1"},
+        descriptor={
+            "$fixture": "common/fixtures/html-parser/sample.html",
+            "encoding": "latin-1",
+        },
         expect_error="unsupported encoding 'latin-1'",
     ),
     FixtureConformanceCase(

@@ -33,6 +33,11 @@ tasks:
     cmds:
       - ./lifecycle.sh test
 
+  lint:
+    desc: Check formatting (ruff format) and lint (ruff check)
+    cmds:
+      - ./lifecycle.sh lint
+
   coverage:
     desc: Run tests with coverage (builds first)
     deps: [build]
@@ -49,3 +54,8 @@ tasks:
     cmds:
       - task: clean
       - ./lifecycle.sh purge
+
+  update:
+    desc: Upgrade locked dependencies and regenerate the lockfile
+    cmds:
+      - ./lifecycle.sh update

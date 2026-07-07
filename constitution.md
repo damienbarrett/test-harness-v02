@@ -76,8 +76,10 @@ Orchestration is handled by a lightweight runner (e.g., `Task` or `Just`). Every
 - Implementations must be validated in both client-side (in-browser) and server-side (`wasmtime`) hosts.
 
 ## 8. Enforcing Non-Functional Constraints
-To ensure a robust codebase before runtime, the pipeline leverages:
-- Strict linting and formatting (no warnings permitted).
+To ensure a robust codebase before runtime, the pipeline enforces:
+- Strict linting and formatting (no warnings permitted). Every implementation directory exposes a `lint` verb — `cargo fmt --check` + `cargo clippy -D warnings` (Rust), `ruff format --check` + `ruff check` (Python), `prettier --check` + `eslint --max-warnings=0` + `npm audit --audit-level=high` (JavaScript), and repo-wide ShellCheck — and the root `test` verb runs the aggregated `lint` before any test executes.
+
+**Aspirational (not yet enforced)**: the following remain stated goals, but each requires dedicated per-language tooling that has not been selected and is not wired into any lifecycle verb; no current gate runs them.
 - Abstract Syntax Tree (AST) analysis to enforce pure functions where mandated.
 - Mutation testing to validate the integrity of 100% code coverage.
 - Cyclomatic complexity limits to ensure maintainability.

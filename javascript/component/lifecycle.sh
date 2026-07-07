@@ -51,6 +51,37 @@ cmd_test() {
   node --test tests/*.test.js
 }
 
+# Formatter + lint + audit gate (Phase 9 of docs/refactoring-plan.md).
+# prettier/eslint are locked devDependencies of this package (package.json /
+# package-lock.json); the flat config is ./eslint.config.js, which excludes
+# the jco-generated transpiled/ output. The shared ../test-support/
+# directory is covered by javascript/library's lint, not re-linted here.
+# eslint runs with --max-warnings=0 (constitution.md §8: no warnings
+# permitted). The npm audit gate needs registry access, like `update`.
+cmd_lint() {
+  npx prettier --check "src/**/*.js" "tests/**/*.js" "eslint.config.js"
+  npx eslint --max-warnings=0 src tests eslint.config.js
+  npm audit --audit-level=high
+}
+
+# Explicitly upgrades locked dependencies and regenerates the lockfile
+# (constitution.md §4); npm audit fix additionally pulls in any newer
+# in-range versions that resolve known advisories, and (like npm audit)
+# exits non-zero if unfixable vulnerabilities remain - so update fails
+# loudly rather than locking in a known-vulnerable tree. Network access is
+# expected here.
+#
+# Note on package.json's jco range (">=1.16.0 <1.18.0"): every jco release
+# in 1.7.0-1.15.0 and >=1.18.0 depends (via @bytecodealliance/componentize-js
+# -> @bytecodealliance/weval) on `decompress`, which has an unpatched
+# critical advisory (GHSA-mp2f-45pm-3cg9). 1.16.x-1.17.x is the newest clean
+# window, so update deliberately stays inside it; widen the range only after
+# upstream jco drops the vulnerable weval/decompress chain.
+cmd_update() {
+  npm update
+  npm audit fix
+}
+
 cmd_coverage() {
   node --test --experimental-test-coverage \
     --test-coverage-include='src/**' \
@@ -73,9 +104,11 @@ case "$verb" in
   setup) cmd_setup ;;
   build) cmd_build ;;
   test) cmd_test ;;
+  lint) cmd_lint ;;
   coverage) cmd_coverage ;;
   clean) cmd_clean ;;
   purge) cmd_purge ;;
+  update) cmd_update ;;
   *)
     echo "lifecycle.sh: unknown verb '$verb'" >&2
     exit 64

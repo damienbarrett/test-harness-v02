@@ -23,6 +23,14 @@ cmd_setup() {
 
 cmd_build() {
   cargo component build --release --locked --offline
+  # cargo-component (re)generates src/bindings.rs during the build with
+  # formatting rustfmt rejects (Phase 0 baseline / Phase 9 of
+  # docs/refactoring-plan.md: an over-long `link_section` attribute line).
+  # The file is gitignored and deleted by `clean`, so formatting the
+  # committed tree can never fix it - the build step itself must leave the
+  # regenerated file rustfmt-clean for `cargo fmt --check` (the `lint` verb)
+  # to pass from a fresh build. `--edition 2021` matches Cargo.toml.
+  rustfmt --edition 2021 src/bindings.rs
   cp "$CARGO_TARGET_DIR/wasm32-wasip1/release/task_component.wasm" task-component.wasm
 }
 
@@ -30,6 +38,24 @@ cmd_build() {
 # the leaf-level test invocation.
 cmd_test() {
   cargo test --locked --offline --tests
+}
+
+# Formatter + lint gate (Phase 9 of docs/refactoring-plan.md). build is a
+# native dependency of lint in both runners: `cargo fmt`/`cargo clippy` need
+# the generated src/bindings.rs to exist (lib.rs declares `mod bindings`),
+# and the build step above is also what formats it. Both tools come from the
+# Nix rust toolchain (rust/flake.nix minimal profile + clippy/rustfmt
+# extensions), not a Cargo dependency.
+cmd_lint() {
+  cargo fmt --check
+  cargo clippy --all-targets --locked --offline -- -D warnings
+}
+
+# Explicitly upgrades locked dependencies and regenerates the lockfile
+# (constitution.md §4). Network access is expected here, unlike the
+# --locked --offline verbs above.
+cmd_update() {
+  cargo update
 }
 
 # coverage rebuilds its own instrumented artifact rather than depending on
@@ -42,6 +68,8 @@ cmd_test() {
 cmd_coverage() {
   cargo clean
   cargo component build --release --locked --offline
+  # Same rule as cmd_build: leave the regenerated bindings.rs rustfmt-clean.
+  rustfmt --edition 2021 src/bindings.rs
   cp "$CARGO_TARGET_DIR/wasm32-wasip1/release/task_component.wasm" task-component.wasm
   cargo llvm-cov clean --workspace
   cargo llvm-cov --locked --offline --tests --fail-under-lines 100 --fail-under-functions 100 --fail-under-regions 100
@@ -70,9 +98,11 @@ case "$verb" in
   setup) cmd_setup ;;
   build) cmd_build ;;
   test) cmd_test ;;
+  lint) cmd_lint ;;
   coverage) cmd_coverage ;;
   clean) cmd_clean ;;
   purge) cmd_purge ;;
+  update) cmd_update ;;
   *)
     echo "lifecycle.sh: unknown verb '$verb'" >&2
     exit 64

@@ -12,8 +12,11 @@ setup: python-setup javascript-setup rust-setup test-harness-setup
 # Build all WASM components
 build: python-build javascript-build rust-build
 
-# Run all tests
-test: contracts-check python-test javascript-test rust-test test-harness-test wasm-test
+# Run all tests (contract validation and quality gates first)
+test: contracts-check lint python-test javascript-test rust-test test-harness-test wasm-test
+
+# Run all formatter, lint, dependency-audit, and shellcheck gates
+lint: python-lint javascript-lint rust-lint test-harness-lint check-shell
 
 # Run all tests with coverage
 coverage: python-coverage javascript-coverage rust-coverage test-harness-coverage
@@ -26,6 +29,9 @@ clean: python-clean javascript-clean rust-clean test-harness-clean
 purge: python-purge javascript-purge rust-purge test-harness-purge
     ./lifecycle.sh purge
 
+# Upgrade locked dependencies and regenerate lockfiles everywhere
+update: python-update javascript-update rust-update test-harness-update
+
 # Run unified WASM contract tests across all implementations (builds first)
 wasm-test: build
     ./lifecycle.sh wasm:test
@@ -37,6 +43,10 @@ check-runners:
 # Validate common/ contract suites before any component is invoked
 contracts-check:
     ./lifecycle.sh contracts:check
+
+# ShellCheck every tracked shell script in the repository
+check-shell:
+    ./lifecycle.sh check:shell
 
 # Verify clean/purge state ownership (destructive, restores via setup+build after; not part of test)
 check-lifecycle:
@@ -292,6 +302,18 @@ javascript-test:
 rust-test:
     ./lifecycle.sh rust-test
 
+# Run Python formatter and lint gates
+python-lint:
+    ./lifecycle.sh python-lint
+
+# Run JavaScript formatter, lint, and audit gates
+javascript-lint:
+    ./lifecycle.sh javascript-lint
+
+# Run Rust formatter and lint gates
+rust-lint:
+    ./lifecycle.sh rust-lint
+
 # Run Python tests with coverage
 python-coverage:
     ./lifecycle.sh python-coverage
@@ -324,6 +346,10 @@ test-harness-setup:
 test-harness-test:
     ./lifecycle.sh test-harness-test
 
+# Run test harness formatter and lint gates
+test-harness-lint:
+    ./lifecycle.sh test-harness-lint
+
 # Run test harness coverage checks
 test-harness-coverage:
     ./lifecycle.sh test-harness-coverage
@@ -347,3 +373,19 @@ rust-purge:
 # Purge test harness setup artifacts
 test-harness-purge:
     ./lifecycle.sh test-harness-purge
+
+# Upgrade Python locked dependencies
+python-update:
+    ./lifecycle.sh python-update
+
+# Upgrade JavaScript locked dependencies
+javascript-update:
+    ./lifecycle.sh javascript-update
+
+# Upgrade Rust locked dependencies
+rust-update:
+    ./lifecycle.sh rust-update
+
+# Upgrade test harness locked dependencies
+test-harness-update:
+    ./lifecycle.sh test-harness-update

@@ -29,6 +29,12 @@ tasks:
       - task: library:test
       - task: component:test
 
+  lint:
+    desc: Run all formatter and lint gates
+    cmds:
+      - task: library:lint
+      - task: component:lint
+
   coverage:
     desc: Run all tests with coverage
     cmds:
@@ -49,16 +55,26 @@ tasks:
       - task: component:purge
       - ./lifecycle.sh purge
 
+  update:
+    desc: Upgrade locked dependencies and regenerate lockfiles
+    cmds:
+      - task: library:update
+      - task: component:update
+
   library:setup:
     cmds: [./lifecycle.sh library-setup]
   library:test:
     cmds: [./lifecycle.sh library-test]
+  library:lint:
+    cmds: [./lifecycle.sh library-lint]
   library:coverage:
     cmds: [./lifecycle.sh library-coverage]
   library:clean:
     cmds: [./lifecycle.sh library-clean]
   library:purge:
     cmds: [./lifecycle.sh library-purge]
+  library:update:
+    cmds: [./lifecycle.sh library-update]
 
   component:setup:
     cmds: [./lifecycle.sh component-setup]
@@ -66,9 +82,13 @@ tasks:
     cmds: [./lifecycle.sh component-build]
   component:test:
     cmds: [./lifecycle.sh component-test]
+  component:lint:
+    cmds: [./lifecycle.sh component-lint]
   component:coverage:
     cmds: [./lifecycle.sh component-coverage]
   component:clean:
     cmds: [./lifecycle.sh component-clean]
   component:purge:
     cmds: [./lifecycle.sh component-purge]
+  component:update:
+    cmds: [./lifecycle.sh component-update]

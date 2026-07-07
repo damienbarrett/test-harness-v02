@@ -49,11 +49,20 @@ def test_errors_aggregate_across_multiple_suites_in_sorted_order(tmp_path):
     write_function_schema(tmp_path, "task-collections", "count-tasks")
     # a-suite: valid. b-suite: function name does not match its filename.
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
-    (tmp_path / "common" / "functions" / "task-collections" / "bogus.test.json").write_text(
-        json.dumps({"function": "not-bogus", "tests": [{"description": "d", "input": {}, "expected": 1}]})
+    (
+        tmp_path / "common" / "functions" / "task-collections" / "bogus.test.json"
+    ).write_text(
+        json.dumps(
+            {
+                "function": "not-bogus",
+                "tests": [{"description": "d", "input": {}, "expected": 1}],
+            }
+        )
     )
     errors = validate_contracts(tmp_path)
     assert len(errors) == 1
@@ -93,7 +102,9 @@ def test_case_missing_expected_is_a_schema_violation_naming_its_location(tmp_pat
     d = tmp_path / "common" / "functions" / "task-collections"
     d.mkdir(parents=True)
     (d / "count-tasks.test.json").write_text(
-        json.dumps({"function": "count-tasks", "tests": [{"description": "d", "input": {}}]})
+        json.dumps(
+            {"function": "count-tasks", "tests": [{"description": "d", "input": {}}]}
+        )
     )
     errors = validate_contracts(tmp_path)
     assert len(errors) == 1
@@ -107,7 +118,10 @@ def test_empty_description_is_a_schema_violation(tmp_path):
     d.mkdir(parents=True)
     (d / "count-tasks.test.json").write_text(
         json.dumps(
-            {"function": "count-tasks", "tests": [{"description": "", "input": {}, "expected": 0}]}
+            {
+                "function": "count-tasks",
+                "tests": [{"description": "", "input": {}, "expected": 0}],
+            }
         )
     )
     errors = validate_contracts(tmp_path)
@@ -120,7 +134,9 @@ def test_empty_tests_array_is_a_schema_violation(tmp_path):
     write_suite_schema(tmp_path)
     d = tmp_path / "common" / "functions" / "task-collections"
     d.mkdir(parents=True)
-    (d / "count-tasks.test.json").write_text(json.dumps({"function": "count-tasks", "tests": []}))
+    (d / "count-tasks.test.json").write_text(
+        json.dumps({"function": "count-tasks", "tests": []})
+    )
     errors = validate_contracts(tmp_path)
     assert len(errors) == 1
     assert "suite schema violation" in errors[0]
@@ -212,7 +228,10 @@ def test_function_name_must_match_filename_stem(tmp_path):
     d.mkdir(parents=True)
     (d / "count-tasks.test.json").write_text(
         json.dumps(
-            {"function": "wrong-name", "tests": [{"description": "d", "input": {}, "expected": 0}]}
+            {
+                "function": "wrong-name",
+                "tests": [{"description": "d", "input": {}, "expected": 0}],
+            }
         )
     )
     errors = validate_contracts(tmp_path)
@@ -222,23 +241,34 @@ def test_function_name_must_match_filename_stem(tmp_path):
 
 def test_interface_not_exported_by_any_world_is_reported(tmp_path):
     write_wit_file(
-        tmp_path, "tasks.wit", "package common:tasks;\n\nworld w {\n  export other-iface;\n}\n"
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\nworld w {\n  export other-iface;\n}\n",
     )
     write_suite_schema(tmp_path)
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     errors = validate_contracts(tmp_path)
     assert len(errors) == 1
-    assert "interface 'task-collections' is not exported by any discovered world" in errors[0]
+    assert (
+        "interface 'task-collections' is not exported by any discovered world"
+        in errors[0]
+    )
 
 
 def test_function_not_declared_on_interface_is_reported(tmp_path):
-    write_world(tmp_path, "task-component")  # declares task-collections.count-tasks only
+    write_world(
+        tmp_path, "task-component"
+    )  # declares task-collections.count-tasks only
     write_suite_schema(tmp_path)
     write_suite(
-        tmp_path, "task-collections", "not-a-real-function",
+        tmp_path,
+        "task-collections",
+        "not-a-real-function",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     errors = validate_contracts(tmp_path)
@@ -253,7 +283,9 @@ def test_missing_function_schema_file_is_reported(tmp_path):
     write_world(tmp_path, "task-component")
     write_suite_schema(tmp_path)
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     errors = validate_contracts(tmp_path)
@@ -271,8 +303,16 @@ def test_case_input_violating_parameters_schema_is_reported(tmp_path):
     write_task_entity_schema(tmp_path)
     write_function_schema(tmp_path, "task-collections", "count-tasks")
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
-        [{"description": "bad input", "input": {"tasks": [{"not-a-name": 1}]}, "expected": 0}],
+        tmp_path,
+        "task-collections",
+        "count-tasks",
+        [
+            {
+                "description": "bad input",
+                "input": {"tasks": [{"not-a-name": 1}]},
+                "expected": 0,
+            }
+        ],
     )
     errors = validate_contracts(tmp_path)
     assert any("case 'bad input': input invalid" in e for e in errors)
@@ -284,8 +324,16 @@ def test_case_expected_violating_returns_schema_is_reported(tmp_path):
     write_task_entity_schema(tmp_path)
     write_function_schema(tmp_path, "task-collections", "count-tasks")
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
-        [{"description": "bad expected", "input": {"tasks": []}, "expected": "not-a-number"}],
+        tmp_path,
+        "task-collections",
+        "count-tasks",
+        [
+            {
+                "description": "bad expected",
+                "input": {"tasks": []},
+                "expected": "not-a-number",
+            }
+        ],
     )
     errors = validate_contracts(tmp_path)
     assert any("case 'bad expected': expected invalid" in e for e in errors)
@@ -323,7 +371,9 @@ def write_page_contract(tmp_path, html_schema: dict | None = None) -> None:
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "pages", "parse-page",
+        tmp_path,
+        "pages",
+        "parse-page",
         parameters={
             "type": "object",
             "properties": {"html": html_schema or {"type": "string"}},
@@ -344,11 +394,15 @@ def test_fixture_input_is_materialized_before_parameter_schema_validation(tmp_pa
     fixtures.mkdir(parents=True)
     (fixtures / "page.html").write_text("<html></html>")
     write_suite(
-        tmp_path, "pages", "parse-page",
+        tmp_path,
+        "pages",
+        "parse-page",
         [
             {
                 "description": "materialized",
-                "input": {"html": {"$fixture": "common/fixtures/html-parser/page.html"}},
+                "input": {
+                    "html": {"$fixture": "common/fixtures/html-parser/page.html"}
+                },
                 "expected": "ok",
             }
         ],
@@ -362,11 +416,15 @@ def test_materialized_fixture_input_violating_the_schema_is_reported(tmp_path):
     fixtures.mkdir(parents=True)
     (fixtures / "page.html").write_text("<html>much longer than five characters</html>")
     write_suite(
-        tmp_path, "pages", "parse-page",
+        tmp_path,
+        "pages",
+        "parse-page",
         [
             {
                 "description": "too long",
-                "input": {"html": {"$fixture": "common/fixtures/html-parser/page.html"}},
+                "input": {
+                    "html": {"$fixture": "common/fixtures/html-parser/page.html"}
+                },
                 "expected": "ok",
             }
         ],
@@ -382,7 +440,9 @@ def test_fixture_resolution_failure_is_a_contract_validation_error(tmp_path):
     fixtures.mkdir(parents=True)
     (fixtures / "page.html").write_text("<html></html>")
     write_suite(
-        tmp_path, "pages", "parse-page",
+        tmp_path,
+        "pages",
+        "parse-page",
         [
             {
                 "description": "bad compression",
@@ -408,7 +468,9 @@ def test_unknown_descriptor_key_is_a_contract_validation_error(tmp_path):
     fixtures.mkdir(parents=True)
     (fixtures / "page.html").write_text("<html></html>")
     write_suite(
-        tmp_path, "pages", "parse-page",
+        tmp_path,
+        "pages",
+        "parse-page",
         [
             {
                 "description": "typo",
@@ -433,30 +495,45 @@ def test_fixture_reference_that_does_not_exist_is_reported(tmp_path):
     write_suite_schema(tmp_path)
     write_task_entity_schema(tmp_path)
     write_function_schema(
-        tmp_path, "task-collections", "count-tasks",
-        parameters={"type": "object"},  # permissive: input carries a $fixture descriptor, not a task list
+        tmp_path,
+        "task-collections",
+        "count-tasks",
+        parameters={
+            "type": "object"
+        },  # permissive: input carries a $fixture descriptor, not a task list
     )
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [
             {
                 "description": "missing fixture",
-                "input": {"tasks": {"$fixture": "common/fixtures/html-parser/missing.html"}},
+                "input": {
+                    "tasks": {"$fixture": "common/fixtures/html-parser/missing.html"}
+                },
                 "expected": 0,
             }
         ],
     )
     errors = validate_contracts(tmp_path)
-    assert any("fixture 'common/fixtures/html-parser/missing.html' does not exist" in e for e in errors)
+    assert any(
+        "fixture 'common/fixtures/html-parser/missing.html' does not exist" in e
+        for e in errors
+    )
 
 
 def test_fixture_reference_escaping_common_fixtures_is_reported(tmp_path):
     write_world(tmp_path, "task-component")
     write_suite_schema(tmp_path)
     write_task_entity_schema(tmp_path)
-    write_function_schema(tmp_path, "task-collections", "count-tasks", parameters={"type": "object"})
+    write_function_schema(
+        tmp_path, "task-collections", "count-tasks", parameters={"type": "object"}
+    )
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [
             {
                 "description": "escaping fixture",
@@ -473,16 +550,22 @@ def test_fixture_nested_inside_a_list_that_exists_is_accepted(tmp_path):
     write_world(tmp_path, "task-component")
     write_suite_schema(tmp_path)
     write_task_entity_schema(tmp_path)
-    write_function_schema(tmp_path, "task-collections", "count-tasks", parameters={"type": "object"})
+    write_function_schema(
+        tmp_path, "task-collections", "count-tasks", parameters={"type": "object"}
+    )
     fixtures_dir = tmp_path / "common" / "fixtures" / "html-parser"
     fixtures_dir.mkdir(parents=True)
     (fixtures_dir / "ok.html").write_text("<html></html>")
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [
             {
                 "description": "fixture in a list",
-                "input": {"tasks": [{"$fixture": "common/fixtures/html-parser/ok.html"}]},
+                "input": {
+                    "tasks": [{"$fixture": "common/fixtures/html-parser/ok.html"}]
+                },
                 "expected": 0,
             }
         ],
@@ -497,9 +580,13 @@ def test_missing_numeric_bounds_are_reported(tmp_path):
     write_world(tmp_path, "task-component")
     write_suite_schema(tmp_path)
     write_task_entity_schema(tmp_path)
-    write_function_schema(tmp_path, "task-collections", "count-tasks", returns={"type": "integer"})
+    write_function_schema(
+        tmp_path, "task-collections", "count-tasks", returns={"type": "integer"}
+    )
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     errors = validate_contracts(tmp_path)
@@ -517,11 +604,15 @@ def test_looser_than_wit_maximum_is_reported(tmp_path):
     write_suite_schema(tmp_path)
     write_task_entity_schema(tmp_path)
     write_function_schema(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         returns={"type": "integer", "minimum": 0, "maximum": 5000000000},
     )
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     errors = validate_contracts(tmp_path)
@@ -540,11 +631,18 @@ def test_signed_integer_bounds_are_checked(tmp_path):
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "things", "get-delta",
+        tmp_path,
+        "things",
+        "get-delta",
         parameters={"type": "object"},
         returns={"type": "integer"},
     )
-    write_suite(tmp_path, "things", "get-delta", [{"description": "d", "input": {}, "expected": 1}])
+    write_suite(
+        tmp_path,
+        "things",
+        "get-delta",
+        [{"description": "d", "input": {}, "expected": 1}],
+    )
     errors = validate_contracts(tmp_path)
     assert any("must declare minimum >= -32768" in e for e in errors)
     assert any("must declare maximum <= 32767" in e for e in errors)
@@ -562,11 +660,18 @@ def test_signed_integer_within_wit_tight_bounds_is_accepted(tmp_path):
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "things", "get-delta",
+        tmp_path,
+        "things",
+        "get-delta",
         parameters={"type": "object"},
         returns={"type": "integer", "minimum": -32768, "maximum": 32767},
     )
-    write_suite(tmp_path, "things", "get-delta", [{"description": "d", "input": {}, "expected": 1}])
+    write_suite(
+        tmp_path,
+        "things",
+        "get-delta",
+        [{"description": "d", "input": {}, "expected": 1}],
+    )
     assert validate_contracts(tmp_path) == []
 
 
@@ -582,11 +687,18 @@ def test_float_return_type_must_declare_number(tmp_path):
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "things", "get-ratio",
+        tmp_path,
+        "things",
+        "get-ratio",
         parameters={"type": "object"},
         returns={"type": "integer"},
     )
-    write_suite(tmp_path, "things", "get-ratio", [{"description": "d", "input": {}, "expected": 1}])
+    write_suite(
+        tmp_path,
+        "things",
+        "get-ratio",
+        [{"description": "d", "input": {}, "expected": 1}],
+    )
     errors = validate_contracts(tmp_path)
     assert any("must declare type 'number'" in e for e in errors)
 
@@ -603,11 +715,18 @@ def test_float_return_type_declaring_number_is_accepted(tmp_path):
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "things", "get-ratio",
+        tmp_path,
+        "things",
+        "get-ratio",
         parameters={"type": "object"},
         returns={"type": "number"},
     )
-    write_suite(tmp_path, "things", "get-ratio", [{"description": "d", "input": {}, "expected": 1.5}])
+    write_suite(
+        tmp_path,
+        "things",
+        "get-ratio",
+        [{"description": "d", "input": {}, "expected": 1.5}],
+    )
     assert validate_contracts(tmp_path) == []
 
 
@@ -623,11 +742,18 @@ def test_non_numeric_return_type_skips_numeric_conformance(tmp_path):
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "things", "greet",
+        tmp_path,
+        "things",
+        "greet",
         parameters={"type": "object"},
         returns={"type": "string"},
     )
-    write_suite(tmp_path, "things", "greet", [{"description": "d", "input": {}, "expected": "hi"}])
+    write_suite(
+        tmp_path,
+        "things",
+        "greet",
+        [{"description": "d", "input": {}, "expected": "hi"}],
+    )
     assert validate_contracts(tmp_path) == []
 
 
@@ -643,11 +769,18 @@ def test_no_return_type_skips_numeric_conformance(tmp_path):
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "things", "log",
+        tmp_path,
+        "things",
+        "log",
         parameters={"type": "object"},
         returns={},
     )
-    write_suite(tmp_path, "things", "log", [{"description": "d", "input": {"message": "hi"}, "expected": None}])
+    write_suite(
+        tmp_path,
+        "things",
+        "log",
+        [{"description": "d", "input": {"message": "hi"}, "expected": None}],
+    )
     assert validate_contracts(tmp_path) == []
 
 
@@ -658,15 +791,20 @@ def test_record_field_mismatch_is_reported(tmp_path):
     write_world(tmp_path, "task-component")
     write_suite_schema(tmp_path)
     # Entity schema drifted: declares `label` instead of the WIT record's `name`.
-    write_task_entity_schema(tmp_path, properties={"label": {"type": "string"}}, required=["label"])
+    write_task_entity_schema(
+        tmp_path, properties={"label": {"type": "string"}}, required=["label"]
+    )
     write_function_schema(tmp_path, "task-collections", "count-tasks")
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     errors = validate_contracts(tmp_path)
     assert any(
-        "entity schema 'common/entities/task-schema.json' properties" in e and "task" in e
+        "entity schema 'common/entities/task-schema.json' properties" in e
+        and "task" in e
         for e in errors
     )
 
@@ -677,7 +815,9 @@ def test_record_without_a_matching_entity_schema_is_not_an_error(tmp_path):
     # No common/entities/task-schema.json at all -- nothing to mirror-check.
     write_function_schema(tmp_path, "task-collections", "count-tasks")
     write_suite(
-        tmp_path, "task-collections", "count-tasks",
+        tmp_path,
+        "task-collections",
+        "count-tasks",
         [{"description": "d", "input": {"tasks": []}, "expected": 0}],
     )
     assert validate_contracts(tmp_path) == []
@@ -699,14 +839,27 @@ def test_transitively_reachable_nested_record_is_checked(tmp_path):
     d = tmp_path / "common" / "entities"
     d.mkdir(parents=True)
     (d / "detail-schema.json").write_text(
-        json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "properties": {"wrong": {"type": "string"}}})
+        json.dumps(
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {"wrong": {"type": "string"}},
+            }
+        )
     )
     write_function_schema(
-        tmp_path, "things", "make",
+        tmp_path,
+        "things",
+        "make",
         parameters={"type": "object"},
         returns={"type": "integer", "minimum": 0, "maximum": 4294967295},
     )
-    write_suite(tmp_path, "things", "make", [{"description": "d", "input": {"items": []}, "expected": 0}])
+    write_suite(
+        tmp_path,
+        "things",
+        "make",
+        [{"description": "d", "input": {"items": []}, "expected": 0}],
+    )
     errors = validate_contracts(tmp_path)
     assert any("detail-schema.json" in e and "detail" in e for e in errors)
 
@@ -727,11 +880,18 @@ def test_param_type_naming_a_non_record_type_is_skipped(tmp_path):
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "things", "set-status",
+        tmp_path,
+        "things",
+        "set-status",
         parameters={"type": "object"},
         returns={"type": "boolean"},
     )
-    write_suite(tmp_path, "things", "set-status", [{"description": "d", "input": {"s": "ok"}, "expected": True}])
+    write_suite(
+        tmp_path,
+        "things",
+        "set-status",
+        [{"description": "d", "input": {"s": "ok"}, "expected": True}],
+    )
     assert validate_contracts(tmp_path) == []
 
 
@@ -747,11 +907,18 @@ def test_param_type_not_naming_any_record_has_no_reachable_records(tmp_path):
     )
     write_suite_schema(tmp_path)
     write_function_schema(
-        tmp_path, "things", "greet",
+        tmp_path,
+        "things",
+        "greet",
         parameters={"type": "object"},
         returns={"type": "string"},
     )
-    write_suite(tmp_path, "things", "greet", [{"description": "d", "input": {"name": "x"}, "expected": "hi"}])
+    write_suite(
+        tmp_path,
+        "things",
+        "greet",
+        [{"description": "d", "input": {"name": "x"}, "expected": "hi"}],
+    )
     assert validate_contracts(tmp_path) == []
 
 
@@ -771,7 +938,10 @@ def test_build_registry_registers_by_both_id_and_path_when_they_differ(tmp_path)
         )
     )
     registry, schemas_by_path = build_registry(tmp_path)
-    assert schemas_by_path["common/entities/widget-schema.json"]["$id"] == "https://example.test/widget"
+    assert (
+        schemas_by_path["common/entities/widget-schema.json"]["$id"]
+        == "https://example.test/widget"
+    )
     assert registry.contents("common/entities/widget-schema.json")["type"] == "object"
     assert registry.contents("https://example.test/widget")["type"] == "object"
 

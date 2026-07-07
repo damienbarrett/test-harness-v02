@@ -27,6 +27,24 @@ cmd_test() {
   uv run --locked --extra test pytest tests/ -v
 }
 
+# Formatter + lint gate (Phase 9 of docs/refactoring-plan.md). ruff comes
+# from the Nix dev shell (python/flake.nix), not from this project's locked
+# dependencies - see that flake for why (prebuilt manylinux wheels cannot
+# execute on this repo's FHS-less NixOS guest). ruff respects .gitignore, so
+# .venv/ and other generated state are excluded automatically.
+cmd_lint() {
+  ruff format --check .
+  ruff check .
+}
+
+# Explicitly upgrades locked dependencies and regenerates the lockfile
+# (constitution.md §4), then syncs the environment with the same extras
+# `setup` installs. Network access is expected here.
+cmd_update() {
+  uv lock --upgrade
+  uv sync --extra test
+}
+
 cmd_coverage() {
   uv run --locked --extra test pytest tests/ --cov --cov-report=term-missing
 }
@@ -47,9 +65,11 @@ verb="${1:-}"
 case "$verb" in
   setup) cmd_setup ;;
   test) cmd_test ;;
+  lint) cmd_lint ;;
   coverage) cmd_coverage ;;
   clean) cmd_clean ;;
   purge) cmd_purge ;;
+  update) cmd_update ;;
   *)
     echo "lifecycle.sh: unknown verb '$verb'" >&2
     exit 64

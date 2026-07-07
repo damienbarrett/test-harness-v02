@@ -11,6 +11,9 @@ build: component-build
 # Run all tests
 test: library-test component-test
 
+# Run all formatter and lint gates
+lint: library-lint component-lint
+
 # Run all tests with coverage
 coverage: library-coverage component-coverage
 
@@ -21,6 +24,9 @@ clean: library-clean component-clean
 # Remove generated outputs and setup artifacts
 purge: library-purge component-purge
     ./lifecycle.sh purge
+
+# Upgrade locked dependencies and regenerate lockfiles
+update: library-update component-update
 
 # Install library dependencies
 library-setup:
@@ -41,6 +47,14 @@ library-test:
 # Run component tests
 component-test:
     ./lifecycle.sh component-test
+
+# Run library formatter and lint gates
+library-lint:
+    ./lifecycle.sh library-lint
+
+# Run component formatter and lint gates
+component-lint:
+    ./lifecycle.sh component-lint
 
 # Run library tests with coverage
 library-coverage:
@@ -65,3 +79,11 @@ library-purge:
 # Purge component setup artifacts
 component-purge:
     ./lifecycle.sh component-purge
+
+# Upgrade library locked dependencies
+library-update:
+    ./lifecycle.sh library-update
+
+# Upgrade component locked dependencies
+component-update:
+    ./lifecycle.sh component-update

@@ -19,6 +19,10 @@ build:
 test: build
     ./lifecycle.sh test
 
+# Check formatting (ruff format) and lint (ruff check)
+lint:
+    ./lifecycle.sh lint
+
 # Run tests with coverage (builds first)
 coverage: build
     ./lifecycle.sh coverage
@@ -30,3 +34,7 @@ clean:
 # Remove generated outputs and setup artifacts
 purge: clean
     ./lifecycle.sh purge
+
+# Upgrade locked dependencies and regenerate the lockfile
+update:
+    ./lifecycle.sh update

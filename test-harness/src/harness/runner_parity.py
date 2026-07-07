@@ -94,7 +94,9 @@ def _parse_taskfile_direct(path: Path) -> dict[str, dict]:
         cmds: list[str] = []
         if isinstance(body, dict):
             for dep in body.get("deps") or []:
-                deps.append(canonical_name(dep if isinstance(dep, str) else dep.get("task", "")))
+                deps.append(
+                    canonical_name(dep if isinstance(dep, str) else dep.get("task", ""))
+                )
             for cmd in body.get("cmds") or []:
                 if isinstance(cmd, dict) and "task" in cmd:
                     deps.append(canonical_name(cmd["task"]))
@@ -152,7 +154,9 @@ def parse_justfile(path: Path) -> dict[str, dict]:
                 if current is not None:
                     body.append(line.strip())
                 continue
-            if ":=" in line or line.startswith(("export ", "alias ", "set ", "import ")):
+            if ":=" in line or line.startswith(
+                ("export ", "alias ", "set ", "import ")
+            ):
                 continue
             if ":" not in line:
                 continue
@@ -195,7 +199,9 @@ def compare(tf: dict, jf: dict) -> tuple[list[str], list[str]]:
     for name in sorted(set(tf) & set(jf)):
         t, j = tf[name], jf[name]
         if t["deps"] != j["deps"]:
-            failures.append(f"  {name}: deps differ - Taskfile {t['deps']} vs justfile {j['deps']}")
+            failures.append(
+                f"  {name}: deps differ - Taskfile {t['deps']} vs justfile {j['deps']}"
+            )
         if t["cmds"] != j["cmds"]:
             failures.append(
                 f"  {name}: command bodies differ\n"

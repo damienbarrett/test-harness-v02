@@ -81,7 +81,10 @@ def main(root: Path | None = None) -> int:
 
     contract_errors = validate_contracts(root)
     if contract_errors:
-        print("FAIL: contract validation failed; no component was invoked:", file=sys.stderr)
+        print(
+            "FAIL: contract validation failed; no component was invoked:",
+            file=sys.stderr,
+        )
         for error in contract_errors:
             print(f"  {error}", file=sys.stderr)
         return 1
@@ -90,7 +93,9 @@ def main(root: Path | None = None) -> int:
     passed = 0
     failed = 0
 
-    print(f"Discovered {len(worlds)} world(s): {', '.join(world.name for world in worlds)}")
+    print(
+        f"Discovered {len(worlds)} world(s): {', '.join(world.name for world in worlds)}"
+    )
     print(f"Discovered {len(suites)} test suite(s)")
     print(f"Discovered {len(langs)} implementation(s): {', '.join(langs)}")
     print()
@@ -126,7 +131,9 @@ def main(root: Path | None = None) -> int:
         # that the function is declared there -- so neither is re-checked
         # (and re-reported) here; a violation would already have failed the
         # run before this loop ever started.
-        matching_worlds = [world for world in worlds if world.exports_interface(interface)]
+        matching_worlds = [
+            world for world in worlds if world.exports_interface(interface)
+        ]
         assert matching_worlds, (
             f"contract validation should have caught interface '{interface}' "
             "not being exported by any world"
@@ -150,7 +157,9 @@ def main(root: Path | None = None) -> int:
                 wasm_path = root / lang / "component" / f"{world.name}.wasm"
 
                 if not wasm_path.exists():
-                    print(f"  FAIL [{lang}] {wasm_path.relative_to(root)}: WASM file not found")
+                    print(
+                        f"  FAIL [{lang}] {wasm_path.relative_to(root)}: WASM file not found"
+                    )
                     failed += len(tests)
                     total += len(tests)
                     continue
@@ -176,7 +185,11 @@ def main(root: Path | None = None) -> int:
                     try:
                         args = prepare_args(resolved_input, signature.params)
                         raw_actual = call_function(
-                            store, instance, interface_export, function, args,
+                            store,
+                            instance,
+                            interface_export,
+                            function,
+                            args,
                         )
                         actual = normalize_return(raw_actual)
                         if actual == expected:
@@ -207,7 +220,9 @@ def main(root: Path | None = None) -> int:
     # Summary
     print("=" * 60)
     if failed == 0:
-        print(f"OK: {passed}/{total} tests passed across {len(langs)} implementation(s).")
+        print(
+            f"OK: {passed}/{total} tests passed across {len(langs)} implementation(s)."
+        )
         return 0
 
     print(f"{failed}/{total} test(s) failed.")

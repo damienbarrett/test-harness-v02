@@ -30,7 +30,9 @@ def _convert_value(value: Any) -> Any:
     lists of lists -- to dataclass instances. Non-dict, non-list values
     (scalars, ``None`` for an absent ``option``) pass through unchanged."""
     if isinstance(value, dict):
-        return _make_record_class({key: _convert_value(val) for key, val in value.items()})
+        return _make_record_class(
+            {key: _convert_value(val) for key, val in value.items()}
+        )
     if isinstance(value, list):
         return [_convert_value(item) for item in value]
     return value
@@ -79,7 +81,10 @@ def normalize_return(value: Any) -> Any:
       passes through unchanged.
     """
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
-        return {f.name: normalize_return(getattr(value, f.name)) for f in dataclasses.fields(value)}
+        return {
+            f.name: normalize_return(getattr(value, f.name))
+            for f in dataclasses.fields(value)
+        }
     if isinstance(value, dict):
         return {key: normalize_return(val) for key, val in value.items()}
     if isinstance(value, (list, tuple)):

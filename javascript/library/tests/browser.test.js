@@ -24,7 +24,9 @@ function createFixtureServer() {
 
     if (requestUrl.pathname === "/") {
       response.writeHead(200, { "Content-Type": MIME_TYPES[".html"] });
-      response.end("<!doctype html><html><body>task contract tests</body></html>");
+      response.end(
+        "<!doctype html><html><body>task contract tests</body></html>",
+      );
       return;
     }
 
@@ -33,7 +35,9 @@ function createFixtureServer() {
       { prefix: "/common/", rootDir: repoRoot },
     ];
 
-    const route = routeRoots.find(({ prefix }) => requestUrl.pathname.startsWith(prefix));
+    const route = routeRoots.find(({ prefix }) =>
+      requestUrl.pathname.startsWith(prefix),
+    );
     if (!route) {
       response.writeHead(404);
       response.end("Not found");
@@ -44,7 +48,8 @@ function createFixtureServer() {
     try {
       const content = await readFile(filePath);
       response.writeHead(200, {
-        "Content-Type": MIME_TYPES[extname(filePath)] ?? "application/octet-stream",
+        "Content-Type":
+          MIME_TYPES[extname(filePath)] ?? "application/octet-stream",
       });
       response.end(content);
     } catch {
@@ -64,11 +69,15 @@ const browserTargets = [
     browserType: chromium,
     launchOptions: {},
   },
-  ...(skipWebKit ? [] : [{
-    label: "WebKit",
-    browserType: webkit,
-    launchOptions: {},
-  }]),
+  ...(skipWebKit
+    ? []
+    : [
+        {
+          label: "WebKit",
+          browserType: webkit,
+          launchOptions: {},
+        },
+      ]),
 ];
 
 let server;
@@ -127,7 +136,9 @@ describe("countTasks in browsers", () => {
         const evaluations = await page.evaluate(async () => {
           const [{ countTasks }, testData] = await Promise.all([
             import("/src/count.js"),
-            fetch("/common/functions/task-collections/count-tasks.test.json").then((response) => response.json()),
+            fetch(
+              "/common/functions/task-collections/count-tasks.test.json",
+            ).then((response) => response.json()),
           ]);
 
           return testData.tests.map(({ description, input, expected }) => ({
@@ -138,7 +149,11 @@ describe("countTasks in browsers", () => {
         });
 
         for (const { actual, description, expected } of evaluations) {
-          assert.equal(actual, expected, formatMismatch(description, actual, expected));
+          assert.equal(
+            actual,
+            expected,
+            formatMismatch(description, actual, expected),
+          );
         }
       } finally {
         await browser.close();

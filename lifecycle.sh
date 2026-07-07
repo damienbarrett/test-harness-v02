@@ -147,6 +147,13 @@ case "$verb" in
     (cd test-harness && nix develop --command ./lifecycle.sh check-contracts)
     ;;
 
+  check:shell)
+    # Repo-wide ShellCheck gate (Phase 9 of docs/refactoring-plan.md). The
+    # implementation lives in test-harness/lifecycle.sh because shellcheck
+    # ships in that directory's Nix dev shell.
+    (cd test-harness && nix develop --command ./lifecycle.sh check-shell)
+    ;;
+
   check:lifecycle)
     cmd_check_lifecycle
     ;;
@@ -165,6 +172,11 @@ case "$verb" in
   rust-test) lang_step rust test ;;
   test-harness-test) lang_step test-harness test ;;
 
+  python-lint) lang_step python lint ;;
+  javascript-lint) lang_step javascript lint ;;
+  rust-lint) lang_step rust lint ;;
+  test-harness-lint) lang_step test-harness lint ;;
+
   python-coverage) lang_step python coverage ;;
   javascript-coverage) lang_step javascript coverage ;;
   rust-coverage) lang_step rust coverage ;;
@@ -179,6 +191,11 @@ case "$verb" in
   javascript-purge) lang_step javascript purge ;;
   rust-purge) lang_step rust purge ;;
   test-harness-purge) lang_step test-harness purge ;;
+
+  python-update) lang_step python update ;;
+  javascript-update) lang_step javascript update ;;
+  rust-update) lang_step rust update ;;
+  test-harness-update) lang_step test-harness update ;;
 
   host:container:build)
     ./"$codex_dir"/container-build.sh

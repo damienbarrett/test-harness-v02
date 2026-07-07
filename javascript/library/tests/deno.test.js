@@ -1,4 +1,7 @@
-import { loadTaskContractFixtures, formatMismatch } from "../../test-support/task-contract.js";
+import {
+  loadTaskContractFixtures,
+  formatMismatch,
+} from "../../test-support/task-contract.js";
 import { countTasks } from "../src/count.js";
 
 const { testData } = await loadTaskContractFixtures();

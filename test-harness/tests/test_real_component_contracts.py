@@ -75,7 +75,9 @@ def test_real_repo_tree_has_at_least_one_world_and_implementation():
 
 
 @pytest.mark.parametrize("lang,world,wasm_path", _CASES, ids=_CASE_IDS)
-def test_real_component_instantiates_and_exports_match_the_wit_contract(lang, world, wasm_path):
+def test_real_component_instantiates_and_exports_match_the_wit_contract(
+    lang, world, wasm_path
+):
     if not wasm_path.exists():
         pytest.fail(
             f"{wasm_path.relative_to(_REPO_ROOT)} does not exist -- run "

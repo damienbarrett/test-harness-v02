@@ -88,6 +88,16 @@ another agent can take over at any point.
   clippy, rustfmt; closure −31.5%); browser/FHS devshell split
   investigated and deferred (jco needs the FHS sandbox; appimageTools
   baseline closure is flag-independent). 216 harness tests.
+- Phase 9 — DONE (commit titled "Restore enforceable quality gates
+  (Phase 9)"). lint verb per directory (cargo fmt/clippy, ruff via Nix
+  shells, prettier+eslint+audit, repo-wide shellcheck) wired into root
+  test; generated bindings.rs formatted at build time; fast-uri fixed by
+  removing its only parent (unused ajv) — both JS packages audit clean;
+  update verb implemented everywhere with jco capped to the clean
+  >=1.16.0 <1.18.0 window (npm update to 1.25.0 would pull a critical
+  decompress advisory; update fails loudly on unfixable vulns);
+  constitution §8 amended to separate enforced gates from an explicit
+  "Aspirational (not yet enforced)" list.
 - Untracked files at repo root to leave alone: `parser-plan.md` and the raw
   `www.newworld.co.nz_...html` capture (original of the Phase 4 fixture).
 
@@ -465,30 +475,51 @@ measurably reduced.
 
 ## Phase 9 — Restore enforceable quality gates
 
-- [ ] Add formatter checks:
-  - [ ] Rust `cargo fmt --check`.
-  - [ ] Python formatter.
-  - [ ] JavaScript formatter.
-- [ ] Add lint checks:
-  - [ ] Rust Clippy with warnings denied.
-  - [ ] Python linting and, if useful, type checking.
-  - [ ] JavaScript linting.
-  - [ ] ShellCheck for shell scripts.
-- [ ] Fix the existing Rust formatting failure.
-- [ ] Implement the `update` lifecycle verb that `constitution.md` §4 already
+- [x] Add formatter checks:
+  - [x] Rust `cargo fmt --check`.
+  - [x] Python formatter. (ruff format --check; ruff ships via the Nix dev
+    shells because a uv-installed manylinux ruff binary cannot execute on
+    the FHS-less NixOS guest.)
+  - [x] JavaScript formatter. (prettier, locked devDependency.)
+- [x] Add lint checks:
+  - [x] Rust Clippy with warnings denied.
+  - [x] Python linting and, if useful, type checking. (ruff check; no type
+    checker added — nothing here needs one yet.)
+  - [x] JavaScript linting. (eslint flat config, --max-warnings=0, plus
+    npm audit --audit-level=high; test-support covered via the library
+    config.)
+  - [x] ShellCheck for shell scripts. (Repo-wide check-shell verb from the
+    test-harness shell; 13 findings fixed, 2 deliberate SC2016 suppressed
+    with reasons.)
+- [x] Fix the existing Rust formatting failure. (Generated
+  src/bindings.rs is now rustfmt-ed by the build step itself, so
+  `cargo fmt --check` passes from a fresh clean+build; no hand-written
+  drift remained.)
+- [x] Implement the `update` lifecycle verb that `constitution.md` §4 already
   requires ("Explicitly upgrades locked dependencies and regenerates
   lockfiles"). No `update` task/recipe currently exists at root, any language
   root, or `test-harness/`. Either add it everywhere or explicitly amend the
   constitution to drop it — do not leave the documented verb unimplemented.
-- [ ] Update the transitive vulnerable `fast-uri` dependency (currently
+  (Implemented everywhere: uv lock --upgrade / cargo update / npm update +
+  npm audit fix; verified exit 0 at root, churn reverted. Finding: npm
+  update would walk jco to 1.25.0 which pulls a critical `decompress`
+  advisory — jco is capped to >=1.16.0 <1.18.0 (locked 1.17.6 unchanged),
+  and `update` intentionally fails loudly on unfixable vulnerabilities.)
+- [x] Update the transitive vulnerable `fast-uri` dependency (currently
   <=3.1.1 in both `javascript/component/package-lock.json` and
   `javascript/library/package-lock.json`, flagged high severity by
-  `npm audit`) through supported parent dependency updates.
-- [ ] Decide whether mutation testing, AST purity analysis, and complexity
-  limits remain requirements.
-  - [ ] Implement them if they remain required.
-  - [ ] Remove or soften the constitutional claims if they are aspirational.
-- [ ] Wire quality checks into both Task and Just.
+  `npm audit`) through supported parent dependency updates. (Its only
+  parent was ajv, an unused devDependency since Phase 3 — removed outright;
+  both packages now audit clean: 0 vulnerabilities.)
+- [x] Decide whether mutation testing, AST purity analysis, and complexity
+  limits remain requirements. (Decision: aspirational.)
+  - [ ] Implement them if they remain required. (Not required now.)
+  - [x] Remove or soften the constitutional claims if they are aspirational.
+    (§8 amended: linting/formatting bullet states the enforced commands;
+    the three aspirational items sit under an explicit "Aspirational (not
+    yet enforced)" heading. Nothing silently deleted.)
+- [x] Wire quality checks into both Task and Just. (lint verb everywhere,
+  root test = contracts:check → lint → tests → wasm:test; parity green.)
 
 Done when the quality claims in `constitution.md` correspond to commands that
 are executed in CI.

@@ -15,6 +15,21 @@ dev = [
     "pytest-cov>=7.1.0",
 ]
 
+# ruff itself is provided by the Nix dev shell (test-harness/flake.nix), not
+# as a uv-managed dependency here - see that file for why (prebuilt native
+# wheel vs. this repo's FHS-less NixOS guest). This section only configures
+# ruff's behavior for this project.
+[tool.ruff]
+# check-runner-parity.py / check-contracts.py / run-wasm-tests.py are POSIX
+# `sh` shims kept at a `.py` path for CLI stability (Phase 1 of
+# docs/refactoring-plan.md); they are not Python source and must not be
+# parsed as such.
+extend-exclude = [
+    "check-contracts.py",
+    "check-runner-parity.py",
+    "run-wasm-tests.py",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

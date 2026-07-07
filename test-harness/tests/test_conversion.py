@@ -54,7 +54,9 @@ def test_empty_params_with_empty_input_succeeds():
 
 
 def test_list_of_records_converted_to_dataclass_instances():
-    (tasks,) = prepare_args({"tasks": [{"name": "Task 1"}, {"name": "Task 2"}]}, params=("tasks",))
+    (tasks,) = prepare_args(
+        {"tasks": [{"name": "Task 1"}, {"name": "Task 2"}]}, params=("tasks",)
+    )
     assert len(tasks) == 2
     assert all(is_dataclass(t) for t in tasks)
     assert [t.name for t in tasks] == ["Task 1", "Task 2"]
@@ -81,14 +83,18 @@ def test_option_none_value_passes_through_unconverted():
 
 
 def test_dict_nested_inside_a_record_is_recursively_converted():
-    (record,) = prepare_args({"wrapper": {"inner": {"name": "nested"}}}, params=("wrapper",))
+    (record,) = prepare_args(
+        {"wrapper": {"inner": {"name": "nested"}}}, params=("wrapper",)
+    )
     assert is_dataclass(record)
     assert is_dataclass(record.inner)
     assert record.inner.name == "nested"
 
 
 def test_list_nested_inside_a_record_is_recursively_converted():
-    (record,) = prepare_args({"wrapper": {"items": [{"name": "a"}]}}, params=("wrapper",))
+    (record,) = prepare_args(
+        {"wrapper": {"items": [{"name": "a"}]}}, params=("wrapper",)
+    )
     assert is_dataclass(record.items[0])
     assert record.items[0].name == "a"
 
@@ -104,7 +110,9 @@ def test_dict_nested_inside_a_list_item_is_recursively_converted():
 
 
 def test_deeply_nested_records_lists_of_lists_of_records_are_converted():
-    (grid,) = prepare_args({"grid": [[{"name": "a"}], [{"name": "b"}, {"name": "c"}]]}, params=("grid",))
+    (grid,) = prepare_args(
+        {"grid": [[{"name": "a"}], [{"name": "b"}, {"name": "c"}]]}, params=("grid",)
+    )
     assert is_dataclass(grid[0][0])
     assert grid[0][0].name == "a"
     assert is_dataclass(grid[1][0])
@@ -117,7 +125,10 @@ def test_record_containing_list_of_records_each_containing_a_nested_record():
         {
             "outer": {
                 "items": [
-                    {"name": "first", "detail": {"owner": "alice", "tags": [{"label": "x"}]}},
+                    {
+                        "name": "first",
+                        "detail": {"owner": "alice", "tags": [{"label": "x"}]},
+                    },
                 ],
             }
         },
@@ -158,7 +169,9 @@ def test_normalize_return_converts_dataclass_record_to_dict():
 def test_normalize_return_recurses_into_nested_dataclasses():
     inner_cls = make_dataclass("Inner", ["name"])
     outer_cls = make_dataclass("Outer", ["inner", "items"])
-    value = outer_cls(inner=inner_cls(name="a"), items=[inner_cls(name="b"), inner_cls(name="c")])
+    value = outer_cls(
+        inner=inner_cls(name="a"), items=[inner_cls(name="b"), inner_cls(name="c")]
+    )
     assert normalize_return(value) == {
         "inner": {"name": "a"},
         "items": [{"name": "b"}, {"name": "c"}],
@@ -176,7 +189,9 @@ def test_normalize_return_converts_non_dataclass_record_like_object_via_attribut
 
 def test_normalize_return_recurses_into_nested_non_dataclass_records():
     inner = FakeWasmtimeRecord(owner="alice")
-    outer = FakeWasmtimeRecord(name="t", meta=inner, tags=[FakeWasmtimeRecord(label="x")])
+    outer = FakeWasmtimeRecord(
+        name="t", meta=inner, tags=[FakeWasmtimeRecord(label="x")]
+    )
     assert normalize_return(outer) == {
         "name": "t",
         "meta": {"owner": "alice"},

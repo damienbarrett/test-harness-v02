@@ -3,9 +3,10 @@
 #
 # State ownership (Phase 7 of docs/refactoring-plan.md): this is the ONE
 # place test-harness/'s HARNESS_DIR and its derived cache/output/
-# UV_CACHE_DIR variables are defined and exported. test-harness/ has no
-# library/component children, so there is no parent/child fallback split
-# here - this script is both the language root and the leaf.
+# UV_CACHE_DIR/RUFF_CACHE_DIR variables are defined and exported.
+# test-harness/ has no library/component children, so there is no
+# parent/child fallback split here - this script is both the language root
+# and the leaf.
 set -eu
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
@@ -14,6 +15,7 @@ export HARNESS_DIR="${HARNESS_DIR:-$script_dir/.harness}"
 export HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-$HARNESS_DIR/cache}"
 export HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-$HARNESS_DIR/outputs}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$HARNESS_CACHE_DIR/uv}"
+export RUFF_CACHE_DIR="${RUFF_CACHE_DIR:-$HARNESS_CACHE_DIR/ruff}"
 
 cmd_setup() {
   uv sync --locked
@@ -43,6 +45,9 @@ cmd_check_contracts() {
 # locked dependencies - see that flake for why (prebuilt manylinux wheels
 # cannot execute on this repo's FHS-less NixOS guest). [tool.ruff] in
 # pyproject.toml excludes the three POSIX-sh entry shims kept at .py paths.
+# ruff's own cache is routed to $RUFF_CACHE_DIR (state ownership, Phase 7)
+# instead of its default bare `.ruff_cache/` here, so `purge` removes it via
+# $HARNESS_DIR without any directory-specific handling.
 cmd_lint() {
   ruff format --check .
   ruff check .
@@ -84,9 +89,13 @@ cmd_clean() {
 # (Taskfile `deps: [clean]` / justfile `purge: clean`), so this only performs
 # the leaf-level work that used to be purge's own trailing command: removing
 # installed dependencies (.venv), the whole HARNESS_DIR (cache + outputs,
-# including the uv cache), and Task's own checksum cache.
+# including the uv and ruff caches), and Task's own checksum cache. The
+# `.ruff_cache` removal is one-time-migration cleanup: before RUFF_CACHE_DIR
+# was routed under $HARNESS_DIR, `ruff` defaulted its cache to a bare
+# `.ruff_cache/` directly here, which no lifecycle verb ever removed; keep
+# this so already-checked-out trees come clean too.
 cmd_purge() {
-  rm -rf .venv "$HARNESS_DIR" .task
+  rm -rf .venv "$HARNESS_DIR" .task .ruff_cache
 }
 
 verb="${1:-}"

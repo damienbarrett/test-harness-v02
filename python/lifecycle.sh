@@ -8,15 +8,18 @@
 # here.
 #
 # State ownership (Phase 7 of docs/refactoring-plan.md): this is the ONE
-# place python/'s HARNESS_DIR and its derived cache/output/UV_CACHE_DIR
-# variables are defined and exported. library/ and component/ inherit these
-# exported values when invoked through the `delegate` function below (they
-# run as child processes of this script); for direct invocation
+# place python/'s HARNESS_DIR and its derived cache/output/UV_CACHE_DIR/
+# RUFF_CACHE_DIR variables are defined and exported. library/ and component/
+# inherit these exported values when invoked through the `delegate` function
+# below (they run as child processes of this script); for direct invocation
 # (e.g. `cd python/component && task test`) each child's own lifecycle.sh
 # derives the identical values itself via the same fallback rule, relative
 # to its own parent directory. No lifecycle.sh in this subtree may default
-# UV_CACHE_DIR to a locally-scoped cache directory independently of this
-# rule.
+# UV_CACHE_DIR or RUFF_CACHE_DIR to a locally-scoped cache directory
+# independently of this rule. This script itself never invokes ruff (only
+# library/ and component/ do), but exports RUFF_CACHE_DIR here anyway so both
+# children share one ruff cache under this language's HARNESS_DIR, exactly
+# like UV_CACHE_DIR.
 #
 # Sub-repo isolation: this script only reaches into its own subtree
 # (library/, component/) and common/; never a sibling language directory.
@@ -29,6 +32,7 @@ export HARNESS_DIR="${HARNESS_DIR:-$script_dir/.harness}"
 export HARNESS_CACHE_DIR="${HARNESS_CACHE_DIR:-$HARNESS_DIR/cache}"
 export HARNESS_OUTPUT_DIR="${HARNESS_OUTPUT_DIR:-$HARNESS_DIR/outputs}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$HARNESS_CACHE_DIR/uv}"
+export RUFF_CACHE_DIR="${RUFF_CACHE_DIR:-$HARNESS_CACHE_DIR/ruff}"
 
 cmd_clean() {
   # ${VAR:?} guards (SC2115): fail loudly instead of expanding to "/" if a

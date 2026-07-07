@@ -247,8 +247,8 @@ gates" below for what `lint` covers).
 
 `clean` and `purge` have distinct, tested contracts (constitution.md §4):
 
-- **`clean`** removes *generated outputs only*: built `.wasm` artifacts, Python's `bindings/`, JavaScript's `transpiled/`, coverage artifacts (`.coverage`, `htmlcov/`, `coverage/`), `__pycache__`/`.pytest_cache`, and the contents of `$HARNESS_OUTPUT_DIR`. It preserves caches and installed dependencies: `.venv`, `node_modules`, cargo's build cache, and the `uv` package cache.
-- **`purge`** removes *everything repository-owned*: every output `clean` removes, plus `.venv`, `node_modules`, cargo's target directory, `$HARNESS_DIR` (cache and outputs together, including the `uv` cache), and Task's own `.task/` checksum cache. After `task purge` at the repo root, `git status --ignored --porcelain` shows no repository-owned ignored artifact anywhere - verified on demand by `task check:lifecycle` (see below).
+- **`clean`** removes *generated outputs only*: built `.wasm` artifacts, Python's `bindings/`, JavaScript's `transpiled/`, coverage artifacts (`.coverage`, `htmlcov/`, `coverage/`), `__pycache__`/`.pytest_cache`, and the contents of `$HARNESS_OUTPUT_DIR`. It preserves caches and installed dependencies: `.venv`, `node_modules`, cargo's build cache, and the `uv`/`ruff` caches.
+- **`purge`** removes *everything repository-owned*: every output `clean` removes, plus `.venv`, `node_modules`, cargo's target directory, `$HARNESS_DIR` (cache and outputs together, including the `uv` and `ruff` caches), and Task's own `.task/` checksum cache. After `task purge` at the repo root, `git status --ignored --porcelain` shows no repository-owned ignored artifact anywhere - verified on demand by `task check:lifecycle` (see below).
 
 ### State ownership: the `HARNESS_*` variables
 
@@ -260,6 +260,7 @@ Each of `python/`, `javascript/`, `rust/`, and `test-harness/` defines and expor
 | `HARNESS_CACHE_DIR` | `$HARNESS_DIR/cache` | `purge` only | Package-manager/build caches. |
 | `HARNESS_OUTPUT_DIR` | `$HARNESS_DIR/outputs` | `clean` and `purge` | Build/report artifacts. |
 | `UV_CACHE_DIR` (python, test-harness) | `$HARNESS_CACHE_DIR/uv` | `purge` (via `HARNESS_DIR`) | Shared `uv` package cache - `library` and `component` no longer default this to a local `.cache/uv`. |
+| `RUFF_CACHE_DIR` (python, test-harness) | `$HARNESS_CACHE_DIR/ruff` | `purge` (via `HARNESS_DIR`) | Shared `ruff` format/lint cache - `python/library`, `python/component`, and `test-harness` no longer default this to a local `.ruff_cache`. |
 | `CARGO_TARGET_DIR` (rust) | `$HARNESS_CACHE_DIR/cargo-target` | `purge` (`cargo clean`) | Cargo build cache, shared between `rust/library` and `rust/component`; `clean` never touches it. |
 
 All four are overridable by exporting them before invoking `task`/`just` - the Apple-container scripts under `container/` already do this, pointing them at a container-local scratch path instead of the checkout.

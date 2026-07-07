@@ -48,3 +48,16 @@ The scripts also support bind-mounted iteration directly:
 
 Validation status: the rebuilt `codex-harness:arm64-nixos` image passes
 `both test` and `both coverage` in image workspace mode.
+
+## Container suite failure policy
+
+`container-suite.sh` is fail-fast by default, per `constitution.md` §4: the
+first failing step (`setup`, `test`, `coverage`, `clean`, or `purge`, and for
+`both` scope the first failing runner) stops the run immediately with a
+non-zero exit and a message naming the step. A failed `setup` is never
+followed by `test`/`coverage`.
+
+Pass `--diagnostic`, or set `CONTAINER_SUITE_DIAGNOSTIC=1`, to opt into
+running every remaining step anyway (e.g. to see whether `test` also fails
+after a broken `setup`). Diagnostic runs are clearly labelled `DIAGNOSTIC
+MODE` in their output and still exit non-zero if anything failed.

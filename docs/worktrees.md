@@ -25,6 +25,20 @@ To remove a worktree and its `agent/<task>` branch:
 bin/dx-worktree destroy rust-bindgen
 ```
 
+`destroy` defaults to safe deletion: it will not remove a worktree with
+uncommitted or untracked changes, and it will not delete a branch with
+commits that are not merged anywhere else. Either refusal names `--force` as
+the way to override it:
+
+```bash
+bin/dx-worktree destroy rust-bindgen --force
+```
+
+`create` also cleans up after itself: if any setup step fails (for example,
+sparse-checkout configuration), the partially created worktree and, if this
+invocation created it, its branch are removed automatically so a retry with
+the same task name starts clean.
+
 Sparse-checkout controls which paths are materialized in a worktree. It is not
 a security boundary by itself. An agent can still reach paths outside the
 worktree if its execution harness allows absolute paths or `cd ..`; enforce

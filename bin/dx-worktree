@@ -5,12 +5,20 @@ usage() {
   cat >&2 <<'USAGE'
 Usage:
   bin/dx-worktree create <task-name> [path ...]
-  bin/dx-worktree destroy <task-name>
+  bin/dx-worktree destroy <task-name> [--force]
   bin/dx-worktree list
 
 Creates sparse worktrees under .worktrees/<task-name> on branch agent/<task-name>.
 Every created worktree includes common/, bin/, and root-level files; additional
-paths are interpreted as cone-mode sparse-checkout directories.
+paths are interpreted as cone-mode sparse-checkout directories. If any create
+step fails (including sparse-checkout setup) the partially created worktree
+and, if this invocation created it, its branch are removed automatically.
+
+destroy defaults to safe deletion: it refuses to remove a worktree with
+uncommitted/untracked changes and refuses to delete a branch with commits not
+merged into its upstream, telling you to pass --force. --force removes the
+worktree (git worktree remove --force) and force-deletes the branch
+(git branch -D) unconditionally.
 
 Environment:
   DX_WORKTREE_BASE           Base ref for new worktrees (default: main)
@@ -45,7 +53,17 @@ normalize_sparse_path() {
   [[ -n $path ]] || die "empty sparse path"
   [[ $path != "." ]] || die "sparse path must name a directory, not '.'"
   [[ $path != /* ]] || die "sparse path must be relative: $raw"
-  [[ $path != *..* ]] || die "sparse path must not contain '..': $raw"
+
+  # Reject traversal by path *segment*, not by substring: 'docs/foo..bar' is
+  # a legitimate directory name and must be accepted, while '..', '../x', and
+  # 'a/../b' must not.
+  local segment
+  local -a segments
+  IFS='/' read -ra segments <<< "$path"
+  for segment in "${segments[@]}"; do
+    [[ $segment != ".." ]] || die "sparse path '$raw' has a '..' segment ('$segment'); traversal segments are not allowed"
+  done
+
   [[ $path != .git* && $path != */.git* ]] || die "sparse path must not target git metadata: $raw"
   [[ -e $path ]] || die "sparse path does not exist: $raw"
 
@@ -53,7 +71,13 @@ normalize_sparse_path() {
     if [[ $path == */* ]]; then
       die "cone-mode sparse checkout expects directories, got file: $raw"
     fi
-    return 1
+    # Bare top-level file: cone-mode sparse-checkout already always includes
+    # root-level files, so there is nothing to add. Distinct from the die()
+    # exit code (1) above so the caller (running this via command
+    # substitution, where `exit` from die() only terminates the subshell)
+    # can tell "nothing to do" apart from "validation failed" instead of
+    # silently swallowing a real rejection.
+    return 2
   fi
 
   printf '%s\n' "$path"
@@ -69,6 +93,33 @@ append_unique() {
   sparse_paths+=("$value")
 }
 
+# Cleanup for a create attempt that failed partway through (e.g. sparse-
+# checkout setup). Armed via `trap cleanup_partial_worktree ERR` for the span
+# between `git worktree add` and successful sparse-checkout configuration,
+# and disarmed immediately after that span succeeds. Only removes the branch
+# if this invocation created it (_cleanup_branch_owned), never a branch that
+# already existed before this attempt.
+cleanup_partial_worktree() {
+  local status=$?
+
+  if [[ -n ${_cleanup_worktree_path:-} ]]; then
+    echo "dx-worktree: create failed (exit=$status); cleaning up partially created worktree" >&2
+    if [[ -d $_cleanup_worktree_path ]]; then
+      git worktree remove --force "$_cleanup_worktree_path" 2>/dev/null || rm -rf "$_cleanup_worktree_path"
+      echo "dx-worktree: removed partial worktree '$_cleanup_worktree_path'" >&2
+    fi
+    git worktree prune >/dev/null 2>&1 || true
+
+    if [[ ${_cleanup_branch_owned:-0} -eq 1 ]] \
+      && git show-ref --verify --quiet "refs/heads/${_cleanup_branch}"; then
+      git branch -D "$_cleanup_branch" >/dev/null 2>&1 || true
+      echo "dx-worktree: removed branch '$_cleanup_branch' created for this attempt" >&2
+    fi
+  fi
+
+  return "$status"
+}
+
 create_worktree() {
   local task_name=$1
   shift || true
@@ -81,6 +132,7 @@ create_worktree() {
   local worktree_path=".worktrees/${task_name}"
   local sparse_path
   local raw_path
+  local rc
   sparse_paths=()
 
   append_unique common
@@ -89,10 +141,28 @@ create_worktree() {
   for raw_path in "$@"; do
     if sparse_path=$(normalize_sparse_path "$raw_path"); then
       append_unique "$sparse_path"
+    else
+      rc=$?
+      # rc=2 is the deliberate "nothing to do" case (bare top-level file);
+      # anything else is a real validation failure that die() already
+      # reported on stderr from within the subshell above -- propagate it as
+      # a hard failure of the whole create instead of silently continuing.
+      [[ $rc -eq 2 ]] || exit "$rc"
     fi
   done
 
   mkdir -p .worktrees
+
+  local branch_existed_before=0
+  if git show-ref --verify --quiet "refs/heads/${branch_name}"; then
+    branch_existed_before=1
+  fi
+
+  _cleanup_worktree_path=$worktree_path
+  _cleanup_branch=$branch_name
+  _cleanup_branch_owned=$((1 - branch_existed_before))
+  trap cleanup_partial_worktree ERR
+
   git worktree add -b "$branch_name" "$worktree_path" "$base_ref"
 
   (
@@ -101,12 +171,18 @@ create_worktree() {
     git sparse-checkout set "${sparse_paths[@]}"
   )
 
+  trap - ERR
+  _cleanup_worktree_path=""
+  _cleanup_branch=""
+  _cleanup_branch_owned=0
+
   printf 'Created %s on branch %s with sparse paths: %s\n' \
     "$worktree_path" "$branch_name" "${sparse_paths[*]}"
 }
 
 destroy_worktree() {
   local task_name=$1
+  local force=$2
 
   validate_task_name "$task_name"
 
@@ -114,9 +190,29 @@ destroy_worktree() {
   local branch_name="${branch_prefix}/${task_name}"
   local worktree_path=".worktrees/${task_name}"
 
-  git worktree remove "$worktree_path"
+  # Guard on existence so re-running destroy after a prior partial failure
+  # (e.g. the worktree was already removed but branch deletion was refused)
+  # can still finish the job instead of failing on "not a working tree".
+  if [[ -d $worktree_path ]]; then
+    if [[ $force -eq 1 ]]; then
+      git worktree remove --force "$worktree_path"
+    else
+      git worktree remove "$worktree_path" || die \
+        "worktree '$worktree_path' was not removed (see git's message above);" \
+        "it may have uncommitted or untracked changes -- re-run" \
+        "'bin/dx-worktree destroy $task_name --force' to remove it anyway"
+    fi
+  fi
+
   if git show-ref --verify --quiet "refs/heads/${branch_name}"; then
-    git branch -D "$branch_name"
+    if [[ $force -eq 1 ]]; then
+      git branch -D "$branch_name"
+    else
+      git branch -d "$branch_name" || die \
+        "branch '$branch_name' was not deleted: it has commits not merged" \
+        "into its upstream -- re-run 'bin/dx-worktree destroy $task_name --force'" \
+        "to force-delete it (this discards those commits)"
+    fi
   fi
 }
 
@@ -140,8 +236,17 @@ main() {
       ;;
     destroy)
       shift
-      [[ $# -eq 1 ]] || die "destroy requires exactly <task-name>"
-      destroy_worktree "$1"
+      local force=0
+      local -a destroy_args=()
+      local destroy_arg
+      for destroy_arg in "$@"; do
+        case "$destroy_arg" in
+          --force) force=1 ;;
+          *) destroy_args+=("$destroy_arg") ;;
+        esac
+      done
+      [[ ${#destroy_args[@]} -eq 1 ]] || die "destroy requires exactly <task-name> [--force]"
+      destroy_worktree "${destroy_args[0]}" "$force"
       ;;
     list)
       shift
@@ -159,4 +264,7 @@ main() {
 }
 
 declare -a sparse_paths
+_cleanup_worktree_path=""
+_cleanup_branch=""
+_cleanup_branch_owned=0
 main "$@"

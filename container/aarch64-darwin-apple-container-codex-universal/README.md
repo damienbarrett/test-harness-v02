@@ -138,6 +138,12 @@ These commands use `CODEX_HARNESS_WORKSPACE_MODE=bind` by default and mount:
 
 Bind-mounted runs are convenient for local editing, but they are not representative of cloud-hosted environments. Prefer the `host:container:*` commands when validating that the repository works without host filesystem sharing.
 
+## Container Suite Failure Policy
+
+`container-suite.sh` (invoked by every `container:*`/`host:container:*` test/coverage recipe above) is fail-fast by default, per `constitution.md` §4: the first failing step (`setup`, `test`, `coverage`, `clean`, or `purge`, and for `both` scope the first failing runner) stops the run immediately with a non-zero exit and a message naming the step. A failed `setup` is never followed by `test`/`coverage`.
+
+Pass `--diagnostic` to `container-suite.sh`, or set `CONTAINER_SUITE_DIAGNOSTIC=1`, to opt into running every remaining step anyway (for example, to see whether `test` also fails after a broken `setup`). Diagnostic runs are clearly labelled `DIAGNOSTIC MODE` in their output and still exit non-zero if anything failed — they never report a broken run as a pass.
+
 ## Clean and Purge
 
 `clean` is safe generated-output cleanup. It removes files such as coverage reports, transpiled output, generated bindings, WASM artifacts, and `.harness/outputs` while preserving dependency/setup state such as `.venv`, `node_modules`, Cargo caches, Playwright browser downloads, and future Nix store state.

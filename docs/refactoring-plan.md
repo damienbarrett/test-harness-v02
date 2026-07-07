@@ -98,6 +98,14 @@ another agent can take over at any point.
   decompress advisory; update fails loudly on unfixable vulns);
   constitution §8 amended to separate enforced gates from an explicit
   "Aspirational (not yet enforced)" list.
+- Phase 10 — DONE (commit titled "Harden container suites and worktree
+  tooling (Phase 10)"). Both container suites fail-fast per constitution
+  §4 with explicit labeled diagnostic mode; dx-worktree destroy defaults
+  to safe deletion with --force opt-in, partial worktrees are cleaned on
+  create failure, sparse paths validated per segment; two latent
+  silent-failure bugs fixed; 10 new real-execution tests (226 total).
+  Note: a883afd separately staged Phase 9 shellcheck fixes to container/
+  that the ddd0d48 commit had missed.
 - Untracked files at repo root to leave alone: `parser-plan.md` and the raw
   `www.newworld.co.nz_...html` capture (original of the Phase 4 fixture).
 
@@ -526,20 +534,33 @@ are executed in CI.
 
 ## Phase 10 — Container and worktree safety
 
-- [ ] Decide whether container suites are fail-fast or failure-collecting.
-- [ ] Align behavior with the documented policy.
-- [ ] Do not run `test` or `coverage` after a failed setup unless explicitly in
-  diagnostic mode.
-- [ ] Keep the two container solutions separate unless the existing
-  duplication policy is intentionally revised.
+- [x] Decide whether container suites are fail-fast or failure-collecting.
+  (Fail-fast, per constitution §4 — both scripts were previously
+  failure-collecting.)
+- [x] Align behavior with the documented policy. (Both container-suite.sh
+  scripts, changed independently per the separation policy; policy in
+  script headers + both READMEs; verified via PATH-shimmed fake task/just
+  since the Apple container runtime doesn't exist on this host.)
+- [x] Do not run `test` or `coverage` after a failed setup unless explicitly in
+  diagnostic mode. (--diagnostic flag or CONTAINER_SUITE_DIAGNOSTIC=1;
+  diagnostic runs are labeled and still exit non-zero on any failure.)
+- [x] Keep the two container solutions separate unless the existing
+  duplication policy is intentionally revised. (Kept separate.)
 - [ ] If shared code is approved, extract only low-level, base-image-neutral
-  operations and keep separate public entry scripts.
-- [ ] Change `bin/dx-worktree destroy` to use safe branch deletion by default.
-- [ ] Add an explicit `--force` option for deleting unmerged branches.
-- [ ] Add cleanup for partially created worktrees when sparse-checkout setup
-  fails.
-- [ ] Validate sparse paths by path segments rather than rejecting every name
-  containing `..`.
+  operations and keep separate public entry scripts. (N/A — not approved.)
+- [x] Change `bin/dx-worktree destroy` to use safe branch deletion by default.
+  (git branch -d + non-forcing git worktree remove; also fixed: destroy
+  retry after a partial failure no longer errors on the missing worktree.)
+- [x] Add an explicit `--force` option for deleting unmerged branches.
+- [x] Add cleanup for partially created worktrees when sparse-checkout setup
+  fails. (ERR trap spanning worktree-add through sparse config; deletes the
+  branch only if this invocation created it. Also fixed a latent bug where
+  die() inside $() swallowed validation failures — a silent partial
+  success.)
+- [x] Validate sparse paths by path segments rather than rejecting every name
+  containing `..`. (docs/foo..bar accepted; ../escape and a/../b rejected
+  naming path and segment. 10 real-execution pytest tests against scratch
+  git repos in test-harness/tests/test_dx_worktree.py.)
 
 Done when routine cleanup cannot silently discard unmerged commits and
 container failure behavior is unambiguous.

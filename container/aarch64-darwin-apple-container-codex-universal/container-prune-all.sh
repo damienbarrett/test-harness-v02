@@ -23,7 +23,7 @@ if [[ -z "$container_bin" ]]; then
   fi
 fi
 
-before="$(df -h /Users/$(id -un) 2>/dev/null | awk 'NR==2 {print $4 " free"}')"
+before="$(df -h "/Users/$(id -un)" 2>/dev/null | awk 'NR==2 {print $4 " free"}')"
 
 echo "=== Pruning dangling image layers ==="
 "$container_bin" image prune || true
@@ -38,4 +38,4 @@ echo "=== Disk usage ==="
 "$container_bin" system df
 echo
 echo "Before: $before"
-echo "After:  $(df -h /Users/$(id -un) 2>/dev/null | awk 'NR==2 {print $4 " free"}')"
+echo "After:  $(df -h "/Users/$(id -un)" 2>/dev/null | awk 'NR==2 {print $4 " free"}')"

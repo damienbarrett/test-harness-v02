@@ -38,4 +38,5 @@ if [[ "$image_found" != "yes" ]]; then
   exit 1
 fi
 
+# shellcheck disable=SC2016 # single quotes are deliberate: $(uname -m) must expand inside the container, not on the host
 "$container_bin" run --rm --arch "$arch" "$image" /bin/sh -c 'printf "container arch: %s\n" "$(uname -m)"'

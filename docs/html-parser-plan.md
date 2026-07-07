@@ -1,5 +1,41 @@
 # New World Product Search Contract (html-parser capability)
 
+## Execution status (living handoff section)
+
+Keep this section current so another agent can resume the work. Branch:
+`feature/new-world-html-parser` (from `main` at `3ca0aec`); plan committed
+as `db98211`.
+
+- **Stage 1 — DONE, commit `3f85528`**: harness `result<T, E>` support.
+  Key empirical finding, recorded in `harness/conversion.py`: wasmtime 43
+  does NOT raise for `result::err` — it returns
+  `wasmtime.component.Variant(tag, payload)`, itself a dataclass that the
+  generic dataclass branch would have silently misnormalized to
+  `{"tag": ..., "payload": ...}`; the envelope detection intercepts it by
+  field shape. Returns-side record conformance, one-key ok/err envelope
+  validation, numeric-bounds skip for record results, and the
+  common/README.md convention all landed. 259 harness tests, 100%.
+- **Stage 2 — IN PROGRESS (subagent, twice interrupted by session
+  limits, resumed from transcript each time)**. State at last checkpoint:
+  - Contract files created: `common/wit/html-parser.wit`, all five entity
+    schemas, `common/functions/new-world-product-search/` (function schema
+    + suite).
+  - Rust: `rust/component/new-world-parser/` core crate + component build
+    wiring (Cargo.toml/lockfile, lifecycle.sh, runner files) in place.
+  - Python: core `python/component/src/new_world_parser.py` + componentize
+    entry `parser_app.py`; components built and verified; fixture adapter
+    + native tests (`tests/fixture_adapter.py`, `test_fixture_adapter.py`,
+    `test_new_world_parser.py`, `test_parser_app.py`) just written —
+    verification of those was the next step when interrupted.
+  - JavaScript: not started at last checkpoint.
+  - Remaining after JS: full gate run (contracts:check, build, wasm:test
+    12/12, composed test, coverage 100%, lint, check:runners,
+    clean-rebuild), then orchestrator review/commit/merge.
+- Nothing in Stage 2 is committed yet — by design it lands as one commit
+  because partial-language landings fail `wasm:test` and the
+  real-component gate (every discovered world needs artifacts in every
+  language).
+
 ## Summary
 
 Add the repository's second capability: parsing the committed New World HTML

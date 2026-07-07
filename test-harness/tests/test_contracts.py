@@ -951,6 +951,367 @@ def test_param_type_not_naming_any_record_has_no_reachable_records(tmp_path):
     assert validate_contracts(tmp_path) == []
 
 
+# --- returns-side record reachability (docs/html-parser-plan.md Stage 1) ---
+
+
+def test_record_reachable_only_through_a_plain_return_type_is_checked(tmp_path):
+    """A record named only in a function's return type (never in any
+    parameter type) must still participate in entity-schema record
+    conformance -- reachability is no longer parameter-only."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface things {\n"
+        "  record widget {\n    id: u32,\n  }\n\n"
+        "  make: func() -> widget;\n"
+        "}\n\n"
+        "world w {\n  export things;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    d = tmp_path / "common" / "entities"
+    d.mkdir(parents=True)
+    (d / "widget-schema.json").write_text(
+        json.dumps(
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                # Drifted: declares `wrong` instead of the WIT record's `id`.
+                "properties": {"wrong": {"type": "string"}},
+            }
+        )
+    )
+    write_function_schema(
+        tmp_path,
+        "things",
+        "make",
+        parameters={"type": "object"},
+        returns={
+            "type": "object",
+            "properties": {"id": {"type": "integer"}},
+            "required": ["id"],
+        },
+    )
+    write_suite(
+        tmp_path,
+        "things",
+        "make",
+        [{"description": "d", "input": {}, "expected": {"id": 1}}],
+    )
+    errors = validate_contracts(tmp_path)
+    assert any("widget-schema.json" in e and "widget" in e for e in errors)
+
+
+def test_record_reachable_through_result_and_nested_list_is_checked(tmp_path):
+    """A record reachable only by walking through `result<>` AND a nested
+    `list<>` inside its ok slot -- `result<list<record-x>, parse-error>` --
+    must still be checked. `_named_types_in` treats the wrapper syntax
+    transparently (see `_reachable_records`), so no result/list-specific
+    unwrapping code is needed for this to work."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface things {\n"
+        "  record record-x {\n    id: u32,\n  }\n\n"
+        "  record parse-error {\n    code: string,\n  }\n\n"
+        "  make: func() -> result<list<record-x>, parse-error>;\n"
+        "}\n\n"
+        "world w {\n  export things;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    d = tmp_path / "common" / "entities"
+    d.mkdir(parents=True)
+    (d / "record-x-schema.json").write_text(
+        json.dumps(
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                # Drifted: declares `wrong` instead of the WIT record's `id`.
+                "properties": {"wrong": {"type": "string"}},
+            }
+        )
+    )
+    write_function_schema(
+        tmp_path,
+        "things",
+        "make",
+        parameters={"type": "object"},
+        returns={
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {"ok": {"type": "array"}},
+                    "required": ["ok"],
+                    "additionalProperties": False,
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "err": {
+                            "type": "object",
+                            "properties": {"code": {"type": "string"}},
+                            "required": ["code"],
+                        }
+                    },
+                    "required": ["err"],
+                    "additionalProperties": False,
+                },
+            ]
+        },
+    )
+    write_suite(
+        tmp_path,
+        "things",
+        "make",
+        [{"description": "d", "input": {}, "expected": {"ok": []}}],
+    )
+    errors = validate_contracts(tmp_path)
+    assert any("record-x-schema.json" in e and "record-x" in e for e in errors)
+
+
+# --- result<T, E> envelope validation (docs/html-parser-plan.md Stage 1) ---
+
+
+def write_result_contract(tmp_path) -> None:
+    """A ``parsing/parse-it`` contract returning
+    ``result<widget, parse-error>`` -- both branches simple records -- with
+    a properly-shaped ``oneOf``-over-``ok``/``err`` ``returns`` schema, for
+    exercising the result envelope checks below."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface parsing {\n"
+        "  record widget {\n    id: u32,\n  }\n\n"
+        "  record parse-error {\n    code: string,\n  }\n\n"
+        "  parse-it: func() -> result<widget, parse-error>;\n"
+        "}\n\n"
+        "world w {\n  export parsing;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    write_function_schema(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        parameters={"type": "object"},
+        returns={
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "ok": {
+                            "type": "object",
+                            "properties": {"id": {"type": "integer"}},
+                            "required": ["id"],
+                            "additionalProperties": False,
+                        }
+                    },
+                    "required": ["ok"],
+                    "additionalProperties": False,
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "err": {
+                            "type": "object",
+                            "properties": {"code": {"type": "string"}},
+                            "required": ["code"],
+                            "additionalProperties": False,
+                        }
+                    },
+                    "required": ["err"],
+                    "additionalProperties": False,
+                },
+            ]
+        },
+    )
+
+
+def test_result_ok_envelope_validates_against_the_oneof_ok_branch(tmp_path):
+    write_result_contract(tmp_path)
+    write_suite(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        [{"description": "d", "input": {}, "expected": {"ok": {"id": 1}}}],
+    )
+    assert validate_contracts(tmp_path) == []
+
+
+def test_result_err_envelope_validates_against_the_oneof_err_branch(tmp_path):
+    write_result_contract(tmp_path)
+    write_suite(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        [{"description": "d", "input": {}, "expected": {"err": {"code": "bad"}}}],
+    )
+    assert validate_contracts(tmp_path) == []
+
+
+def test_result_expected_not_an_object_is_rejected(tmp_path):
+    write_result_contract(tmp_path)
+    write_suite(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        [{"description": "d", "input": {}, "expected": 0}],
+    )
+    errors = validate_contracts(tmp_path)
+    assert any(
+        "'expected' must be a one-key object with key 'ok' or 'err'" in e
+        for e in errors
+    )
+
+
+def test_result_expected_with_both_ok_and_err_keys_is_rejected(tmp_path):
+    write_result_contract(tmp_path)
+    write_suite(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        [
+            {
+                "description": "d",
+                "input": {},
+                "expected": {"ok": {"id": 1}, "err": {"code": "x"}},
+            }
+        ],
+    )
+    errors = validate_contracts(tmp_path)
+    assert any(
+        "'expected' must be a one-key object with key 'ok' or 'err'" in e
+        for e in errors
+    )
+
+
+def test_result_expected_with_wrong_key_name_is_rejected(tmp_path):
+    write_result_contract(tmp_path)
+    write_suite(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        [{"description": "d", "input": {}, "expected": {"success": {"id": 1}}}],
+    )
+    errors = validate_contracts(tmp_path)
+    assert any(
+        "'expected' must be a one-key object with key 'ok' or 'err'" in e
+        for e in errors
+    )
+
+
+def test_numeric_bounds_skipped_for_record_ok_branch_of_a_result_return(tmp_path):
+    """Record (or list/result-of-record) ok-branches never reach the
+    numeric-bounds check at all -- cleanly skipped, never crashed, even
+    though the envelope schema has no bare numeric bounds anywhere for it
+    to (mis)find."""
+    write_result_contract(tmp_path)
+    write_suite(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        [{"description": "d", "input": {}, "expected": {"ok": {"id": 1}}}],
+    )
+    assert validate_contracts(tmp_path) == []
+
+
+def test_numeric_bounds_applied_to_a_bare_numeric_ok_branch_with_correct_bounds(
+    tmp_path,
+):
+    """When the ok-branch type IS a bare numeric WIT primitive, numeric
+    bounds checking applies to it, found via the oneOf branch whose
+    ``properties.ok`` sub-schema exists."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface parsing {\n"
+        "  record parse-error {\n    code: string,\n  }\n\n"
+        "  parse-it: func() -> result<u32, parse-error>;\n"
+        "}\n\n"
+        "world w {\n  export parsing;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    write_function_schema(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        parameters={"type": "object"},
+        returns={
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "ok": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 4294967295,
+                        }
+                    },
+                    "required": ["ok"],
+                    "additionalProperties": False,
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "err": {
+                            "type": "object",
+                            "properties": {"code": {"type": "string"}},
+                            "required": ["code"],
+                            "additionalProperties": False,
+                        }
+                    },
+                    "required": ["err"],
+                    "additionalProperties": False,
+                },
+            ]
+        },
+    )
+    write_suite(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        [{"description": "d", "input": {}, "expected": {"ok": 1}}],
+    )
+    assert validate_contracts(tmp_path) == []
+
+
+def test_numeric_bounds_ok_branch_schema_not_found_reports_missing_bounds(tmp_path):
+    """When the envelope schema declares no ``oneOf`` branch with an
+    ``ok`` property at all (a malformed/incomplete schema), the numeric
+    check runs against an empty schema (``_result_ok_branch_schema``'s
+    ``{}`` fallback) and reports missing bounds -- rather than crashing on
+    a schema shape it cannot find."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface parsing {\n"
+        "  record parse-error {\n    code: string,\n  }\n\n"
+        "  parse-it: func() -> result<u32, parse-error>;\n"
+        "}\n\n"
+        "world w {\n  export parsing;\n}\n",
+    )
+    write_suite_schema(tmp_path)
+    write_function_schema(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        parameters={"type": "object"},
+        returns={},
+    )
+    write_suite(
+        tmp_path,
+        "parsing",
+        "parse-it",
+        [{"description": "d", "input": {}, "expected": {"ok": 1}}],
+    )
+    errors = validate_contracts(tmp_path)
+    assert any("must declare minimum >= 0" in e for e in errors)
+    assert any("must declare maximum <= 4294967295" in e for e in errors)
+
+
 # --- build_registry ---------------------------------------------------------
 
 

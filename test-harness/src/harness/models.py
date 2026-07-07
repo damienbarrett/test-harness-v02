@@ -28,12 +28,29 @@ class WitFunction:
     declared return type text verbatim (e.g. ``"u32"``), or ``None`` for a
     function with no return type. Both are used by ``harness.contracts`` to
     check WIT/JSON-Schema conformance (numeric bounds and record shape).
+
+    ``returns_is_result`` is ``True`` when ``returns`` is a WIT
+    ``result<...>`` type (including the bare ``result`` and single-arg
+    ``result<T>`` forms) -- ``False`` for every other return type text,
+    including ``None`` (no return type at all). ``returns_ok``/
+    ``returns_err`` hold the ``result<ok, err>`` type text of each slot
+    (``None`` for an omitted slot -- an explicit ``_`` placeholder, or a
+    missing second argument) when ``returns_is_result`` is ``True``; both
+    are ``None`` otherwise. ``returns`` itself is kept verbatim regardless
+    (e.g. ``"result<search-results, parse-error>"``), so no information is
+    lost by also parsing it. See ``harness.wit`` for how these are parsed,
+    and ``harness.contracts``/``harness.conversion`` for how they are used
+    (the result-envelope validation and return-value normalization added
+    for the html-parser capability -- docs/html-parser-plan.md).
     """
 
     name: str
     params: tuple[str, ...] = ()
     param_types: tuple[str, ...] = ()
     returns: str | None = None
+    returns_is_result: bool = False
+    returns_ok: str | None = None
+    returns_err: str | None = None
 
 
 @dataclass(frozen=True)

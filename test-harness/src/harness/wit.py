@@ -11,7 +11,9 @@ information the harness needs from each ``common/wit/*.wit`` file:
   to build positional call arguments -- see ``harness.conversion``), each
   parameter's declared type text, and the function's declared return type
   text (used by ``harness.contracts`` for WIT/JSON-Schema conformance
-  checks),
+  checks) -- further parsed into ``(ok, err)`` type-text slots when the
+  return type is a ``result<...>`` (see ``_parse_result_return`` and
+  ``harness.models.WitFunction``),
 * every ``record`` type declared inside an interface, and its field names
   in declared order (also used by ``harness.contracts``).
 
@@ -55,6 +57,13 @@ _FUNC_STMT_RE = re.compile(
     r"^\s*([A-Za-z][\w-]*)\s*:\s*func\s*\(([^)]*)\)\s*(?:->\s*(.+))?\s*$",
     re.DOTALL,
 )
+
+# Matches a return-type expression that is a WIT `result<...>` type in any
+# of its forms: bare `result`, single-arg `result<T>`, or two-arg
+# `result<T, E>` (either slot may be the `_` placeholder). Anchored to the
+# whole (already-stripped) return text, since a WIT return type is always a
+# single type expression -- there is nothing else it could be trailing.
+_RESULT_RETURN_RE = re.compile(r"^result(?:<(.*)>)?$", re.DOTALL)
 
 
 def _strip_comments(text: str) -> str:
@@ -136,6 +145,42 @@ def _split_statements(body: str) -> list[str]:
     return statements
 
 
+def _parse_result_return(returns_text: str) -> tuple[str | None, str | None] | None:
+    """Parse a WIT return-type expression that may be a ``result<...>``
+    type into its ``(ok, err)`` type-text slots.
+
+    Returns ``None`` if ``returns_text`` is not a ``result`` type at all
+    (e.g. ``"u32"`` or ``"list<task>"``) -- distinguishing "not a result"
+    from "a result with both slots omitted" (bare ``result``), which would
+    otherwise both look like ``(None, None)``.
+
+    Handles every WIT ``result`` form: bare ``result`` (``(None, None)``),
+    single-arg ``result<T>`` (``(T, None)`` -- no error type at all, not an
+    omitted slot), and two-arg ``result<T, E>`` (either slot may itself be
+    the ``_`` placeholder, normalized to ``None``).
+
+    Nested generics are handled correctly: the outer ``<...>`` is matched
+    by ``_RESULT_RETURN_RE`` greedily up to the *last* ``>`` in the text
+    (correct because the whole string is a single type expression with
+    nothing trailing it), and its content is split on top-level commas
+    with ``_split_top_level`` -- the same helper already used for function
+    parameter lists -- so an inner generic's own comma is not mistaken for
+    the ok/err separator, e.g. ``result<list<record-x>, parse-error>``
+    splits into ``"list<record-x>"`` and ``"parse-error"``, not three
+    pieces.
+    """
+    match = _RESULT_RETURN_RE.match(returns_text)
+    if match is None:
+        return None
+    content = match.group(1)
+    if content is None:
+        return (None, None)
+    parts = [part.strip() for part in _split_top_level(content)]
+    ok = parts[0] if len(parts) >= 1 and parts[0] not in ("", "_") else None
+    err = parts[1] if len(parts) >= 2 and parts[1] not in ("", "_") else None
+    return (ok, err)
+
+
 def _parse_functions(body: str) -> dict[str, WitFunction]:
     functions: dict[str, WitFunction] = {}
     for stmt in _split_statements(body):
@@ -156,11 +201,19 @@ def _parse_functions(body: str) -> dict[str, WitFunction]:
             pname, _, ptype = frag.partition(":")
             param_names.append(pname.strip())
             param_types.append(ptype.strip())
+        returns = returns_str.strip() if returns_str is not None else None
+        result_slots = _parse_result_return(returns) if returns is not None else None
+        returns_ok, returns_err = (
+            result_slots if result_slots is not None else (None, None)
+        )
         functions[name] = WitFunction(
             name=name,
             params=tuple(param_names),
             param_types=tuple(param_types),
-            returns=returns_str.strip() if returns_str is not None else None,
+            returns=returns,
+            returns_is_result=result_slots is not None,
+            returns_ok=returns_ok,
+            returns_err=returns_err,
         )
     return functions
 

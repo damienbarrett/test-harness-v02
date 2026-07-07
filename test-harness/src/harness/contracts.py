@@ -16,15 +16,25 @@ schema itself, the WIT world/interface/function it claims to exercise, its
 function's parameter/return JSON Schemas (with every ``$fixture``
 descriptor in a case's input fully resolved through ``harness.fixtures``
 first, so the schema validates the MATERIALIZED input), and two forms of
-WIT/JSON-Schema conformance (numeric bounds and record shape). It
-returns a list of human-readable error strings; an empty list means every
-discovered suite is valid. It never instantiates or invokes a WASM
-component -- ``harness.cli.main`` runs it immediately after WIT world
-discovery (passing those worlds in, so discovery happens once per run) and
-before suite models are loaded, implementations are discovered, or any
-component is touched, so a malformed contract fails with a clear
-validation error before anything else can trip over it or mask it
+WIT/JSON-Schema conformance (numeric bounds and record shape -- the
+latter reachable through parameter types AND return types, including
+through ``result<>``/``option<>``/``list<>`` wrappers). It returns a list
+of human-readable error strings; an empty list means every discovered
+suite is valid. It never instantiates or invokes a WASM component --
+``harness.cli.main`` runs it immediately after WIT world discovery
+(passing those worlds in, so discovery happens once per run) and before
+suite models are loaded, implementations are discovered, or any component
+is touched, so a malformed contract fails with a clear validation error
+before anything else can trip over it or mask it
 (docs/refactoring-plan.md Phase 3).
+
+For a ``result<T, E>``-returning function (docs/html-parser-plan.md), a
+case's ``expected`` must additionally be a one-key ``{"ok": ...}`` /
+``{"err": ...}`` envelope (see ``_check_result_envelope_shape`` and
+common/README.md); numeric return-bounds checking then applies to the
+ok-branch type only when it is itself a bare numeric WIT primitive, and is
+cleanly skipped (never crashes) for a record, list, or nested-result
+ok-type.
 
 **WIT is authoritative.** A WIT ``record`` (e.g. ``task`` in
 ``common/wit/tasks.wit``) is the source of truth for a domain entity's
@@ -197,12 +207,26 @@ def _reachable_records(
     function: WitFunction, interface: WitInterface
 ) -> dict[str, WitRecord]:
     """Every WIT record type reachable from ``function``'s declared
-    parameter types, transitively through the fields of any record found
-    along the way (e.g. ``tasks: list<task>`` reaches ``task``)."""
+    parameter types AND its return type, transitively through the fields
+    of any record found along the way (e.g. ``tasks: list<task>`` reaches
+    ``task``).
+
+    The return type participates via the exact same ``_named_types_in``
+    call used for parameters -- no ``result<>``/``option<>``/``list<>``
+    -specific unwrapping is needed here, because ``_named_types_in``
+    already extracts bareword identifiers from the raw type text and
+    discards known WIT keywords/wrapper names (``result``, ``option``,
+    ``list``, ...). So for a return type text like
+    ``"result<list<record-x>, parse-error>"``, it yields exactly
+    ``{"record-x", "parse-error"}`` -- the wrapper syntax is transparent to
+    it, the same way it already is for a parameter's ``list<task>``.
+    """
     found: dict[str, WitRecord] = {}
     frontier: set[str] = set()
     for type_text in function.param_types:
         frontier |= _named_types_in(type_text)
+    if function.returns is not None:
+        frontier |= _named_types_in(function.returns)
     while frontier:
         # Every name ever added to `frontier` is excluded from re-addition
         # once it lands in `found` (see the `- set(found)` below), so a
@@ -286,6 +310,51 @@ def _check_numeric_conformance(
     return errors
 
 
+def _check_result_envelope_shape(
+    expected: Any, rel: str, function: str, description: str
+) -> list[str]:
+    """The harness-wide result envelope convention (see common/README.md):
+    for a ``result<T, E>``-returning function, a case's ``expected`` must
+    be an object with EXACTLY one key, either ``"ok"`` or ``"err"`` --
+    never a bare value, an empty object, extra keys, or any other key
+    name. This is checked independently of (and in addition to) schema
+    validation against the function schema's ``returns`` (a ``oneOf`` over
+    the two branches, written by the suite author) so a malformed
+    envelope gets a clear, specific message rather than only an opaque
+    schema-mismatch error.
+    """
+    if (
+        isinstance(expected, dict)
+        and len(expected) == 1
+        and next(iter(expected)) in ("ok", "err")
+    ):
+        return []
+    return [
+        f"{rel}: case '{description}': '{function}' returns a result; 'expected' must "
+        f"be a one-key object with key 'ok' or 'err' (found {expected!r})"
+    ]
+
+
+def _result_ok_branch_schema(returns_schema: dict[str, Any]) -> dict[str, Any]:
+    """For a result-returning function's envelope ``returns`` schema (a
+    ``oneOf`` over ``{"ok": ...}``/``{"err": ...}`` branches, per the
+    result envelope convention in common/README.md), the sub-schema for
+    the value under the ``"ok"`` key -- or ``{}`` if no branch declares
+    one (the schema is not shaped as expected; the numeric check that
+    consumes this then reports missing bounds rather than crashing).
+
+    Only called when the WIT ok-type is itself a bare numeric primitive;
+    record/list/result-of-record ok-types never reach this helper at all
+    (see the call site in ``_validate_suite_file``), so an envelope whose
+    ok branch is a record never has its schema shape inspected here.
+    """
+    for branch in returns_schema.get("oneOf") or ():
+        ok_schema = (branch.get("properties") or {}).get("ok")
+        if ok_schema is not None:
+            return ok_schema
+    return {}
+
+
 def _validate_suite_file(
     root: Path,
     path: Path,
@@ -354,11 +423,30 @@ def _validate_suite_file(
 
     errors: list[str] = []
 
-    errors.extend(
-        _check_numeric_conformance(
-            signature.returns, function_schema.get("returns", {}), rel, function
+    returns_schema = function_schema.get("returns", {})
+    if signature.returns_is_result:
+        # Numeric return-bounds checking applies only to a bare numeric
+        # WIT ok-type (e.g. a hypothetical `result<u32, parse-error>`); for
+        # a record, list, or nested-result ok-type (the html-parser
+        # contract's `result<search-results, parse-error>` among them) it
+        # is cleanly skipped rather than attempted against the envelope
+        # schema's shape -- there is no bare numeric constraint to find,
+        # and no crash either way.
+        ok_type = signature.returns_ok
+        if ok_type is not None and (
+            ok_type in _WIT_UNSIGNED_MAX
+            or ok_type in _WIT_SIGNED_BOUNDS
+            or ok_type in _WIT_FLOAT_TYPES
+        ):
+            errors.extend(
+                _check_numeric_conformance(
+                    ok_type, _result_ok_branch_schema(returns_schema), rel, function
+                )
+            )
+    else:
+        errors.extend(
+            _check_numeric_conformance(signature.returns, returns_schema, rel, function)
         )
-    )
 
     assert (
         chosen_world is not None
@@ -398,6 +486,13 @@ def _validate_suite_file(
                 errors.append(
                     f"{rel}: case '{description}': input invalid: {err.message}"
                 )
+
+        if signature.returns_is_result:
+            errors.extend(
+                _check_result_envelope_shape(
+                    case["expected"], rel, function, description
+                )
+            )
 
         for err in returns_validator.iter_errors(case["expected"]):
             errors.append(

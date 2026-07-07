@@ -201,6 +201,55 @@ suite applies to:
   neither pass nor fail. Native-only execution is always this kind of
   visible declaration, never a silent omission.
 
+## Result-returning functions (`result<T, E>`)
+
+A WIT function declared with a `result<ok-type, err-type>` return type
+(e.g. `parse-search-results: func(...) -> result<search-results,
+parse-error>;`) uses a harness-wide **result envelope** convention for its
+suite's `expected` values. Non-result functions (e.g. `count-tasks`, whose
+`expected` is a bare integer) are entirely unaffected and keep writing a
+plain value as always.
+
+A case's `expected` for a result-returning function must be an object
+with **exactly one key**, either `"ok"` or `"err"`:
+
+```json
+{ "expected": { "ok": { "site": "new-world", "products": [] } } }
+```
+
+```json
+{ "expected": { "err": { "code": "no-results-container", "message": "..." } } }
+```
+
+Anything else -- a bare value, an empty object, both keys present, or any
+other key name -- is a contract-validation error with a clear message,
+checked independently of (and in addition to) validating the envelope
+against the function schema's `returns`. By convention, `returns` is
+written as a `oneOf` over the two branches, each `$ref`-ing the relevant
+entity schema:
+
+```json
+"returns": {
+  "oneOf": [
+    { "type": "object", "properties": { "ok": { "$ref": "../../entities/search-results-schema.json" } }, "required": ["ok"], "additionalProperties": false },
+    { "type": "object", "properties": { "err": { "$ref": "../../entities/parse-error-schema.json" } }, "required": ["err"], "additionalProperties": false }
+  ]
+}
+```
+
+The harness (`harness.conversion.normalize_return`) normalizes a
+component's actual `result<T, E>` return value into this same envelope
+shape before comparing it to `expected` -- see that module for how
+wasmtime-py 43 actually surfaces a component's `result` return (a tagged
+`Variant`, not a Trap/exception for `err`).
+
+WIT numeric return-bounds checking (the `u32` etc. bounds described below)
+applies to a result-returning function's **ok-branch type** only when that
+type is itself a bare numeric WIT primitive; for a record, list, or
+nested-result ok-type (the common case: an ok payload is almost always a
+domain record) it is cleanly skipped, never attempted against the
+envelope's `oneOf` shape.
+
 ## Schema `$id` and registry convention
 
 Every schema file under `common/` (`entities/*.json`, `schemas/*.json`,
@@ -237,8 +286,15 @@ and it is picked up automatically.
   [File-backed fixtures](#file-backed-fixtures));
 - WIT numeric bounds (e.g. a WIT `u32` return requires the function
   schema's `returns` to declare `minimum: 0` and `maximum: 4294967295` --
-  never looser);
-- WIT-vs-JSON-Schema record conformance.
+  never looser; for a result-returning function this applies to the
+  ok-branch type only when it is itself a bare numeric primitive);
+- WIT-vs-JSON-Schema record conformance, for every record reachable from
+  a function's parameter types AND its return type (through
+  `result<>`/`option<>`/`list<>` wrappers and record fields, transitively);
+- for a result-returning function, that each case's `expected` is a
+  one-key `{"ok": ...}`/`{"err": ...}` envelope (see
+  [Result-returning functions](#result-returning-functions-resultt-e)
+  above).
 
 For that last check, and in general: **WIT is authoritative.** A WIT
 `record` (declared once under `common/wit/`) is the source of truth for a

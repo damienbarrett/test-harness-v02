@@ -363,6 +363,135 @@ def test_function_signature_returns_none_for_unknown_function_name(tmp_path):
     assert world.function_signature("task-collections", "no-such-function") is None
 
 
+def test_non_result_return_leaves_result_fields_unset(tmp_path):
+    """A plain (non-result) return type -- the only kind ``count-tasks``
+    itself ever uses -- must leave ``returns_is_result`` false and the
+    ok/err slots unset, so the existing contract is completely unaffected
+    by result-return parsing."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface things {\n"
+        "  count-tasks: func(tasks: list<task>) -> u32;\n"
+        "}\n\n"
+        "world w {\n  export things;\n}\n",
+    )
+    fn = discover_worlds(tmp_path)[0].function_signature("things", "count-tasks")
+    assert fn.returns == "u32"
+    assert fn.returns_is_result is False
+    assert fn.returns_ok is None
+    assert fn.returns_err is None
+
+
+def test_no_return_type_leaves_result_fields_unset(tmp_path):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface things {\n"
+        "  log: func(message: string);\n"
+        "}\n\n"
+        "world w {\n  export things;\n}\n",
+    )
+    fn = discover_worlds(tmp_path)[0].function_signature("things", "log")
+    assert fn.returns is None
+    assert fn.returns_is_result is False
+    assert fn.returns_ok is None
+    assert fn.returns_err is None
+
+
+def test_result_return_with_ok_and_err_types_is_parsed(tmp_path):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface parsing {\n"
+        "  record search-results {\n    site: string,\n  }\n\n"
+        "  record parse-error {\n    code: string,\n  }\n\n"
+        "  parse-it: func(html: string) -> result<search-results, parse-error>;\n"
+        "}\n\n"
+        "world w {\n  export parsing;\n}\n",
+    )
+    fn = discover_worlds(tmp_path)[0].function_signature("parsing", "parse-it")
+    assert fn.returns == "result<search-results, parse-error>"
+    assert fn.returns_is_result is True
+    assert fn.returns_ok == "search-results"
+    assert fn.returns_err == "parse-error"
+
+
+def test_result_return_with_nested_generics_splits_correctly(tmp_path):
+    """A nested generic inside the ok slot (``list<record-x>``) must not be
+    split apart by the comma inside its own angle brackets."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface parsing {\n"
+        "  record record-x {\n    id: u32,\n  }\n\n"
+        "  record parse-error {\n    code: string,\n  }\n\n"
+        "  parse-it: func() -> result<list<record-x>, parse-error>;\n"
+        "}\n\n"
+        "world w {\n  export parsing;\n}\n",
+    )
+    fn = discover_worlds(tmp_path)[0].function_signature("parsing", "parse-it")
+    assert fn.returns_is_result is True
+    assert fn.returns_ok == "list<record-x>"
+    assert fn.returns_err == "parse-error"
+
+
+def test_result_return_single_arg_has_no_err_type(tmp_path):
+    """``result<T>`` (one argument) means "ok = T, no error type" -- not an
+    omitted slot; ``returns_err`` is ``None`` either way, but for a
+    different reason than the placeholder form below."""
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface parsing {\n"
+        "  parse-it: func() -> result<u32>;\n"
+        "}\n\n"
+        "world w {\n  export parsing;\n}\n",
+    )
+    fn = discover_worlds(tmp_path)[0].function_signature("parsing", "parse-it")
+    assert fn.returns_is_result is True
+    assert fn.returns_ok == "u32"
+    assert fn.returns_err is None
+
+
+def test_result_return_with_placeholder_ok_slot_omits_ok(tmp_path):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface parsing {\n"
+        "  record parse-error {\n    code: string,\n  }\n\n"
+        "  parse-it: func() -> result<_, parse-error>;\n"
+        "}\n\n"
+        "world w {\n  export parsing;\n}\n",
+    )
+    fn = discover_worlds(tmp_path)[0].function_signature("parsing", "parse-it")
+    assert fn.returns_is_result is True
+    assert fn.returns_ok is None
+    assert fn.returns_err == "parse-error"
+
+
+def test_bare_result_return_has_no_ok_or_err_type(tmp_path):
+    write_wit_file(
+        tmp_path,
+        "tasks.wit",
+        "package common:tasks;\n\n"
+        "interface parsing {\n"
+        "  parse-it: func() -> result;\n"
+        "}\n\n"
+        "world w {\n  export parsing;\n}\n",
+    )
+    fn = discover_worlds(tmp_path)[0].function_signature("parsing", "parse-it")
+    assert fn.returns_is_result is True
+    assert fn.returns_ok is None
+    assert fn.returns_err is None
+
+
 def test_two_worlds_in_same_package_share_the_same_interface_definitions(tmp_path):
     """Interfaces are declared once per package; every world in that
     package -- whichever interfaces it exports -- can look up the same

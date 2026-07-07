@@ -1,4 +1,5 @@
-from dataclasses import is_dataclass, make_dataclass
+from dataclasses import dataclass, is_dataclass, make_dataclass
+from typing import Any
 
 import pytest
 
@@ -15,6 +16,24 @@ class FakeWasmtimeRecord:
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+
+@dataclass
+class FakeWasmtimeVariant:
+    """Mirrors ``wasmtime.component.Variant`` exactly:
+    ``@dataclass class Variant: tag: str; payload: Optional[Any] = None``
+    (confirmed by reading ``wasmtime/component/_types.py`` in the
+    test-harness venv -- see ``harness.conversion._is_result_envelope_variant``
+    for the full empirical trace). Unlike ``FakeWasmtimeRecord`` above,
+    this double IS a real ``dataclasses`` instance -- deliberately, since
+    that is exactly what makes wasmtime's real ``Variant`` tricky:
+    ``normalize_return`` must special-case this shape BEFORE its generic
+    "any dataclass instance" branch, or it would produce
+    ``{"tag": ..., "payload": ...}`` instead of the
+    ``{"ok": ...}``/``{"err": ...}`` envelope."""
+
+    tag: str
+    payload: Any = None
 
 
 # --- prepare_args: parameter ordering and mismatch detection ---------------
@@ -201,3 +220,48 @@ def test_normalize_return_recurses_into_nested_non_dataclass_records():
 
 def test_normalize_return_walks_dict_values_without_changing_shape():
     assert normalize_return({"a": (1, 2), "b": None}) == {"a": [1, 2], "b": None}
+
+
+# --- normalize_return: result<T, E> envelope --------------------------------
+
+
+def test_normalize_return_converts_ok_result_variant_to_envelope():
+    assert normalize_return(FakeWasmtimeVariant(tag="ok", payload=42)) == {"ok": 42}
+
+
+def test_normalize_return_converts_err_result_variant_to_envelope():
+    variant = FakeWasmtimeVariant(tag="err", payload="boom")
+    assert normalize_return(variant) == {"err": "boom"}
+
+
+def test_normalize_return_recursively_normalizes_result_variant_record_payload():
+    """The ok/err payload is normalized exactly like any other return value
+    -- here, a wasmtime-style non-dataclass record-like object -- reusing
+    the existing recursive normalization rather than a separate code path."""
+    record = FakeWasmtimeRecord(name="Task 1")
+    variant = FakeWasmtimeVariant(tag="ok", payload=record)
+    assert normalize_return(variant) == {"ok": {"name": "Task 1"}}
+
+
+def test_normalize_return_result_variant_with_none_payload():
+    """A result branch with no payload type at all (e.g. `result<T>`'s
+    omitted error type) lifts to a `Variant` with `payload=None`."""
+    assert normalize_return(FakeWasmtimeVariant(tag="err", payload=None)) == {
+        "err": None
+    }
+
+
+def test_normalize_return_result_variant_payload_can_itself_be_a_dataclass():
+    inner_cls = make_dataclass("Inner", ["id"])
+    variant = FakeWasmtimeVariant(tag="ok", payload=inner_cls(id=7))
+    assert normalize_return(variant) == {"ok": {"id": 7}}
+
+
+def test_tag_payload_shaped_dataclass_with_non_result_tag_is_not_an_envelope():
+    """A `tag`/`payload`-shaped dataclass whose tag is neither "ok" nor
+    "err" is not mistaken for a result envelope -- it falls through to the
+    generic dataclass branch, keeping this narrowly scoped to actual
+    result<T, E> returns rather than claiming general WIT variant/enum
+    support (out of scope; see docs/html-parser-plan.md Stage 1)."""
+    other = FakeWasmtimeVariant(tag="some-other-case", payload=1)
+    assert normalize_return(other) == {"tag": "some-other-case", "payload": 1}

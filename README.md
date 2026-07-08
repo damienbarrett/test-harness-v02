@@ -417,8 +417,10 @@ Durable architectural decisions live as short ADRs under
 - [`0005-separate-container-implementations.md`](docs/adr/0005-separate-container-implementations.md)
   -- separate container implementations.
 - [`0006-conformance-transports-for-non-wasm-implementations.md`](docs/adr/0006-conformance-transports-for-non-wasm-implementations.md)
-  -- conformance transports and tiers for languages that cannot practically
-  compile to a WASM component (proposed, not yet implemented).
+  -- native/REST conformance transports for implementations that cannot be
+  compiled to a WASM component: considered and **deferred**; WASM-only
+  remains the standing decision, with the criteria that would reopen it
+  recorded.
 
 `docs/refactoring-plan.md` remains the phase-by-phase execution history that
 produced the current design; the ADRs above are the durable "why," extracted

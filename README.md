@@ -416,6 +416,9 @@ Durable architectural decisions live as short ADRs under
   -- Task/Just parity strategy.
 - [`0005-separate-container-implementations.md`](docs/adr/0005-separate-container-implementations.md)
   -- separate container implementations.
+- [`0006-conformance-transports-for-non-wasm-implementations.md`](docs/adr/0006-conformance-transports-for-non-wasm-implementations.md)
+  -- conformance transports and tiers for languages that cannot practically
+  compile to a WASM component (proposed, not yet implemented).
 
 `docs/refactoring-plan.md` remains the phase-by-phase execution history that
 produced the current design; the ADRs above are the durable "why," extracted

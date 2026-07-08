@@ -25,8 +25,7 @@ suite is valid. It never instantiates or invokes a WASM component --
 (passing those worlds in, so discovery happens once per run) and before
 suite models are loaded, implementations are discovered, or any component
 is touched, so a malformed contract fails with a clear validation error
-before anything else can trip over it or mask it
-(docs/refactoring-plan.md Phase 3).
+before anything else can trip over it or mask it.
 
 For a ``result<T, E>``-returning function (docs/html-parser-plan.md), a
 case's ``expected`` must additionally be a one-key ``{"ok": ...}`` /
@@ -475,8 +474,7 @@ def _validate_suite_file(
         # never compared against the schema. A resolution failure (missing
         # file, path escape, corrupt gzip, oversized, unknown descriptor
         # key, ...) is itself a contract-validation error, reported here so
-        # it fails before any component is invoked (docs/refactoring-plan.md
-        # Phase 4).
+        # it fails before any component is invoked.
         try:
             materialized_input = resolve_fixtures(case["input"], root)
         except FixtureError as exc:

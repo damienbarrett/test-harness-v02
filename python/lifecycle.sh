@@ -7,7 +7,7 @@
 # directory-owned command-body content, so only those verbs are implemented
 # here.
 #
-# State ownership (Phase 7 of docs/refactoring-plan.md): this is the ONE
+# State ownership (constitution.md §3): this is the ONE
 # place python/'s HARNESS_DIR and its derived cache/output/UV_CACHE_DIR/
 # RUFF_CACHE_DIR variables are defined and exported. library/ and component/
 # inherit these exported values when invoked through the `delegate` function

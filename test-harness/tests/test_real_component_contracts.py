@@ -1,5 +1,5 @@
 """Integration tests against the real, actually-built ``.wasm`` artifacts
-under ``<repo-root>/{lang}/component/`` (docs/refactoring-plan.md Phase 8).
+under ``<repo-root>/{lang}/component/``.
 
 Unlike every other test in this suite, these load real files from the real
 repository tree instead of a fake ``tmp_path`` project. If a component has

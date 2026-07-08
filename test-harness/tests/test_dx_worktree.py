@@ -1,5 +1,5 @@
-"""Real end-to-end tests for `bin/dx-worktree` (docs/refactoring-plan.md
-Phase 10: container and worktree safety).
+"""Real end-to-end tests for `bin/dx-worktree` (container and worktree
+safety).
 
 Unlike the container-suite.sh failure-policy changes (which cannot be
 exercised end-to-end on this host because the Apple `container` runtime does

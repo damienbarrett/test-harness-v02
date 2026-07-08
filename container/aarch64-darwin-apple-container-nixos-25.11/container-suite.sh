@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Failure policy (docs/refactoring-plan.md Phase 10; constitution.md §4: "If
+# Failure policy (constitution.md §4: "If
 # any sub-layer fails, the orchestrator exits non-zero immediately. No silent
 # partial successes."):
 #

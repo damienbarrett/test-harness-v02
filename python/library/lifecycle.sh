@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Canonical lifecycle implementation for python/library/.
 #
-# State ownership (Phase 7 of docs/refactoring-plan.md): HARNESS_DIR and its
+# State ownership (constitution.md §3): HARNESS_DIR and its
 # derived cache/output/UV_CACHE_DIR/RUFF_CACHE_DIR variables are defined once
 # at the language root (python/lifecycle.sh) and inherited here when this
 # script runs as that script's delegate. For direct invocation
@@ -29,7 +29,7 @@ cmd_test() {
   uv run --locked --extra test pytest tests/ -v
 }
 
-# Formatter + lint gate (Phase 9 of docs/refactoring-plan.md). ruff comes
+# Formatter + lint gate (constitution.md §8). ruff comes
 # from the Nix dev shell (python/flake.nix), not from this project's locked
 # dependencies - see that flake for why (prebuilt manylinux wheels cannot
 # execute on this repo's FHS-less NixOS guest). ruff respects .gitignore, so

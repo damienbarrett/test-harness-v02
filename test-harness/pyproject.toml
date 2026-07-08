@@ -21,9 +21,8 @@ dev = [
 # ruff's behavior for this project.
 [tool.ruff]
 # check-runner-parity.py / check-contracts.py / run-wasm-tests.py are POSIX
-# `sh` shims kept at a `.py` path for CLI stability (Phase 1 of
-# docs/refactoring-plan.md); they are not Python source and must not be
-# parsed as such.
+# `sh` shims kept at a `.py` path for CLI stability; they are not
+# Python source and must not be parsed as such.
 extend-exclude = [
     "check-contracts.py",
     "check-runner-parity.py",

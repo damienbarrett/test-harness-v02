@@ -1,6 +1,6 @@
 import js from "@eslint/js";
 
-// Minimal, modern-ESM ruleset (Phase 9 of docs/refactoring-plan.md):
+// Minimal, modern-ESM ruleset (constitution.md §8):
 // `@eslint/js` recommended rules only. No stylistic rules here - formatting
 // is Prettier's job (see `npx prettier --check`), not ESLint's.
 //

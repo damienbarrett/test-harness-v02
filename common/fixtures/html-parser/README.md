@@ -1,7 +1,7 @@
 # html-parser fixtures
 
-Captured pages used as regression fixtures for the future `html-parser`
-capability (see docs/refactoring-plan.md). Referenced from test suites via
+Captured pages used as regression fixtures for the `html-parser`
+capability. Referenced from test suites via
 `$fixture` descriptors; the descriptor format, path-safety rules, and size
 limits are documented in [`common/README.md`](../../README.md).
 

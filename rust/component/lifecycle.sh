@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Canonical lifecycle implementation for rust/component/.
 #
-# State ownership (Phase 7 of docs/refactoring-plan.md): HARNESS_DIR and its
+# State ownership (constitution.md §3): HARNESS_DIR and its
 # derived cache/output/CARGO_TARGET_DIR variables are defined once at the
 # language root (rust/lifecycle.sh) and inherited here when this script runs
 # as that script's delegate. For direct invocation (`cd rust/component &&
@@ -28,8 +28,8 @@ cmd_setup() {
 build_component_artifact() {
   cargo component build --release --locked --offline --workspace
   # cargo-component (re)generates each member's src/bindings.rs during the
-  # build with formatting rustfmt rejects (Phase 0 baseline / Phase 9 of
-  # docs/refactoring-plan.md: an over-long `link_section` attribute line).
+  # build with formatting rustfmt rejects (an over-long `link_section`
+  # attribute line).
   # The files are gitignored and deleted by `clean`, so formatting the
   # committed tree can never fix them - the build step itself must leave the
   # regenerated files rustfmt-clean for `cargo fmt --all --check` (the
@@ -50,7 +50,7 @@ cmd_test() {
   cargo test --locked --offline --tests --workspace
 }
 
-# Formatter + lint gate (Phase 9 of docs/refactoring-plan.md). build is a
+# Formatter + lint gate (constitution.md §8). build is a
 # native dependency of lint in both runners: `cargo fmt`/`cargo clippy` need
 # each member's generated src/bindings.rs to exist (both lib.rs declare
 # `mod bindings`), and the build step above is also what formats them. Both

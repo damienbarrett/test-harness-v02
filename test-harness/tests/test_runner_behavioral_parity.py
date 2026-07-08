@@ -1,7 +1,7 @@
 """Behavioral parity tests: run real `task` and `just` binaries against a
 generated fixture project (Taskfile.yml + justfile + lifecycle.sh, following
-the same canonical convention introduced in docs/refactoring-plan.md
-Phase 6) and assert their observable behavior is equivalent.
+the same canonical convention as the rest of the repo) and assert their
+observable behavior is equivalent.
 
 `check-runner-parity.py` only proves the two DSL *texts* agree; these tests
 prove that agreement actually produces identical *runtime* behavior:
@@ -340,7 +340,7 @@ def test_failing_dependency_prevents_dependent_verb_on_both_runners(tmp_path):
     assert not (just_dir / "depfail_dependent.marker").exists()
 
 
-# --- HARNESS_* derivation rule (Phase 7 of docs/refactoring-plan.md) -------
+# --- HARNESS_* derivation rule (constitution.md §3) -------
 #
 # The fixture below follows the exact same derivation rule as every real
 # lifecycle.sh in this repo (see e.g. python/lifecycle.sh): HARNESS_DIR

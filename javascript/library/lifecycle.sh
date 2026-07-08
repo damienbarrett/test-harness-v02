@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Canonical lifecycle implementation for javascript/library/.
 #
-# State ownership (Phase 7 of docs/refactoring-plan.md): HARNESS_DIR and its
+# State ownership (constitution.md §3): HARNESS_DIR and its
 # derived cache/output variables are defined once at the language root
 # (javascript/lifecycle.sh) and inherited here when this script runs as that
 # script's delegate. For direct invocation (`cd javascript/library && task
@@ -35,7 +35,7 @@ cmd_test() {
   deno test --allow-read tests/deno.test.js
 }
 
-# Formatter + lint + audit gate (Phase 9 of docs/refactoring-plan.md).
+# Formatter + lint + audit gate (constitution.md §8).
 # prettier/eslint are locked devDependencies of this package (package.json /
 # package-lock.json); the flat config is ./eslint.config.js. Scope: this
 # package's src/ and tests/, the config file itself, and the shared

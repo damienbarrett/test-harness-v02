@@ -85,8 +85,8 @@ Orchestration is handled by a lightweight runner (e.g., `Task` or `Just`). Every
 - Code structured as a proper package using `pyproject.toml`.
 
 ### WebAssembly (WASM)
-- **Target, as actually built** (amended -- see `docs/refactoring-plan.md`
-  Phase 8/9): each language's build toolchain (`componentize-py`,
+- **Target, as actually built** (amended to describe the actual tooling):
+  each language's build toolchain (`componentize-py`,
   `jco componentize`, `cargo-component` -- the latter explicitly targeting
   `wasm32-wasip1`, per `rust/flake.nix`) produces a Component Model `.wasm`
   artifact, and the server-side host instantiates every one of them through

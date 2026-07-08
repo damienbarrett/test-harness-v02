@@ -21,7 +21,7 @@
       devShells = forSystems (pkgs: {
         # `minimal` (rustc, cargo, rust-std only) instead of `default`
         # (adds rust-docs, rustfmt, clippy) plus only the extensions this
-        # repo actually needs (docs/refactoring-plan.md Phase 8):
+        # repo actually needs:
         #   - llvm-tools-preview: required by cargo-llvm-cov (`task
         #     rust-coverage`) for source-based coverage instrumentation.
         #   - clippy, rustfmt: not used by any lifecycle verb yet, but

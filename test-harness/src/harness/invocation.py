@@ -42,7 +42,7 @@ def instantiate_component(
     Returns ``(store, instance)`` on success or raises unchanged on failure.
 
     A single plain WASIp2 linker (``linker.add_wasip2()``) is used -- no
-    retry, no fallback. Earlier (Phase 2 of docs/refactoring-plan.md) this
+    retry, no fallback. Earlier this
     function retried a missing-import instantiation failure with unknown
     imports defined as traps, to tolerate a componentize-js output that
     imported ``wasi:http`` (which wasmtime-py's ``add_wasip2()`` does not

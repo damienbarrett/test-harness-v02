@@ -319,8 +319,7 @@ layers should re-prove the same fact:
   export its interface, and asserts every language's compiled component
   produces the same observable behavior via `wasmtime`. This is the single
   place a server-side `wasmtime` contract case should exist — language
-  test suites must not re-implement it (see Phase 5 of
-  `docs/refactoring-plan.md`).
+  test suites must not re-implement it.
 - **In-browser (client-side) validation** stays per-language. The
   constitution (`constitution.md` §7, WASM) requires validation in both a
   client-side (in-browser) and a server-side (`wasmtime`) host; the
@@ -380,7 +379,7 @@ re-enabled three capabilities the component never used, for no reason —
 the component imported 16 `wasi:*` interfaces (cli, clocks, filesystem,
 io, random) instead of zero, and was about 30 KB larger. Verified via
 `wasmtime.component.Component(...).type.imports(engine)` against the real
-built artifact (docs/refactoring-plan.md Phase 8):
+built artifact:
 
 | | imports | size (bytes) |
 | --- | --- | --- |
@@ -422,7 +421,9 @@ Durable architectural decisions live as short ADRs under
   remains the standing decision, with the criteria that would reopen it
   recorded.
 
-`docs/refactoring-plan.md` remains the phase-by-phase execution history that
-produced the current design; the ADRs above are the durable "why," extracted
-from that handoff document so a contributor does not need to read historical
-phase notes to understand the current architecture.
+The repository reached its current shape through an 11-phase foundational
+refactor followed by the `html-parser` capability. The durable "why" is the
+ADRs above; the recorded starting baseline is
+[`docs/baseline-phase0.md`](docs/baseline-phase0.md); and the detailed
+per-phase history is the git commit log — each phase landed as one reviewable
+commit titled `Phase 0` … `Phase 11` (`git log --grep='Phase'`).

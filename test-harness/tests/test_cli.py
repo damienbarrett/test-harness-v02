@@ -145,7 +145,7 @@ def test_main_structured_return_value_normalized_before_comparison(
     """A component return value structurally equivalent to ``expected`` but
     differently typed (e.g. a WIT record surfaced as a dataclass instance)
     is normalized to a plain dict before comparison, so it counts as a
-    match (docs/refactoring-plan.md Phase 2). The WIT function returns a
+    match. The WIT function returns a
     record here (rather than the real contract's `u32`) specifically so
     Phase 3's numeric-conformance check does not apply to this fixture."""
     write_wit_file(
@@ -198,8 +198,7 @@ def test_main_runs_suite_only_against_worlds_that_export_its_interface(
     tmp_path, monkeypatch, capsys
 ):
     """A suite runs only against the world(s) that export its interface --
-    never the full Cartesian product of every suite and every world
-    (docs/refactoring-plan.md Phase 2)."""
+    never the full Cartesian product of every suite and every world."""
     write_wit_file(
         tmp_path,
         "tasks.wit",
@@ -241,7 +240,7 @@ def test_main_runs_suite_only_against_worlds_that_export_its_interface(
 def test_main_hard_fails_when_no_world_exports_the_suites_interface(tmp_path, capsys):
     """A suite whose interface is exported by no discovered world is a hard
     failure, caught by contract validation before any component is
-    touched (docs/refactoring-plan.md Phase 2 and Phase 3) -- never a
+    touched -- never a
     silent skip."""
     write_wit_file(
         tmp_path,
@@ -474,8 +473,7 @@ def test_main_uses_wit_declared_param_order_not_json_insertion_order(
     tmp_path, monkeypatch, capsys
 ):
     """End to end: positional args are built from the WIT function's
-    declared parameter order, not the JSON test input's own key order
-    (docs/refactoring-plan.md Phase 2)."""
+    declared parameter order, not the JSON test input's own key order."""
     write_wit_file(
         tmp_path,
         "tasks.wit",
@@ -528,8 +526,7 @@ def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(
     tmp_path, monkeypatch, capsys
 ):
     """Two WIT packages in separate files, each with its own interface and
-    suite, are routed to the correct component/world -- not mixed
-    (docs/refactoring-plan.md Phase 2)."""
+    suite, are routed to the correct component/world -- not mixed."""
     write_wit_file(
         tmp_path,
         "pkg-a.wit",
@@ -603,7 +600,7 @@ def test_main_routes_two_packages_and_two_suites_to_their_own_worlds(
     assert "OK: 2/2 tests passed across 1 implementation(s)." in out
 
 
-# --- targets execution metadata (docs/refactoring-plan.md Phase 4) ----------
+# --- targets execution metadata ----------
 
 
 def test_main_skips_native_only_suite_explicitly_without_counting_it(
@@ -744,8 +741,7 @@ def test_main_resolves_fixtures_before_building_call_arguments(
     tmp_path, monkeypatch, capsys
 ):
     """End to end: the component receives the DECODED fixture text as its
-    argument -- never the ``$fixture`` descriptor object
-    (docs/refactoring-plan.md Phase 4)."""
+    argument -- never the ``$fixture`` descriptor object."""
     write_wit_file(
         tmp_path,
         "tasks.wit",

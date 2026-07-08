@@ -5,7 +5,7 @@ For each directory containing both files, verifies (and fails on):
   2. The dependency set per recipe matches.
   3. The (normalised) command body for each recipe matches.
 
-Since Phase 6 of docs/refactoring-plan.md, every lifecycle recipe body is a
+Every lifecycle recipe body is a
 thin one-line call into that directory's canonical `./lifecycle.sh <verb>`
 script, so Task and Just command bodies are expected to be identical after
 normalisation. The ONLY tolerated syntactic difference is how each DSL spells

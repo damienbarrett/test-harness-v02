@@ -1,6 +1,6 @@
 import js from "@eslint/js";
 
-// Minimal, modern-ESM ruleset (Phase 9 of docs/refactoring-plan.md):
+// Minimal, modern-ESM ruleset (constitution.md §8):
 // `@eslint/js` recommended rules plus the ambient globals this package's own
 // isomorphic test suite actually references across its four runtimes (Node,
 // Bun, Deno, and Playwright-driven browsers). No stylistic rules here -

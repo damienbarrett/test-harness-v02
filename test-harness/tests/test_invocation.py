@@ -86,7 +86,7 @@ def test_instantiate_component_succeeds_on_first_try():
 
 
 def test_instantiate_component_propagates_instantiation_failure_unchanged():
-    """No fallback exists (removed in docs/refactoring-plan.md Phase 8, once
+    """No fallback exists (removed once
     all three real components were confirmed to instantiate cleanly against
     a plain WASIp2-only linker -- see tests/test_real_component_contracts.py).
     Any instantiation failure -- including the exact "matching

@@ -16,7 +16,7 @@
             pkgs.uv
             pkgs.go-task
             pkgs.just
-            # ruff, shellcheck (Phase 9 of docs/refactoring-plan.md): both
+            # ruff, shellcheck (constitution.md §8): both
             # provided by nixpkgs rather than as uv-managed project
             # dependencies/ad-hoc downloads. See python/flake.nix for why
             # ruff specifically must come from Nix in this guest OS (no FHS

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Canonical lifecycle implementation for javascript/component/.
 #
-# State ownership (Phase 7 of docs/refactoring-plan.md): HARNESS_DIR and its
+# State ownership (constitution.md §3): HARNESS_DIR and its
 # derived cache/output variables are defined once at the language root
 # (javascript/lifecycle.sh) and inherited here when this script runs as that
 # script's delegate. For direct invocation (`cd javascript/component && task
@@ -34,7 +34,7 @@ cmd_build() {
   # is a pure function (see src/app.js) that touches none of them, and
   # empirically the resulting component imports nothing at all -- verified
   # via wasmtime.component.Component.type().imports(engine) against the
-  # built artifact (docs/refactoring-plan.md Phase 8). Do not re-add
+  # built artifact. Do not re-add
   # `--enable clocks/random/stdio` (the pre-Phase-8 flags): each one was
   # previously undoing part of `-d all` for no reason this component needs.
   if [ -n "${JCO_FHS:-}" ]; then
@@ -68,7 +68,7 @@ cmd_test() {
   node --test tests/*.test.js
 }
 
-# Formatter + lint + audit gate (Phase 9 of docs/refactoring-plan.md).
+# Formatter + lint + audit gate (constitution.md §8).
 # prettier/eslint are locked devDependencies of this package (package.json /
 # package-lock.json); the flat config is ./eslint.config.js, which excludes
 # the jco-generated transpiled/ output. The shared ../test-support/

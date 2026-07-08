@@ -6,8 +6,8 @@ version: "3"
 # other for normal lifecycle work.
 #
 # Every recipe with real command-body content delegates to the single
-# canonical ./lifecycle.sh script shared with justfile (see docs/
-# refactoring-plan.md Phase 6), so Task and Just always run the identical
+# canonical ./lifecycle.sh script shared with justfile (ADR 0004), so Task
+# and Just always run the identical
 # command. Recipes that are pure aggregators (only compose other recipes, no
 # literal shell work of their own) keep using Task's native `deps`/`cmds:
 # [{task: ...}]` graph instead, since that already matches justfile's native

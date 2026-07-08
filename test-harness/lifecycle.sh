@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Canonical lifecycle implementation for test-harness/.
 #
-# State ownership (Phase 7 of docs/refactoring-plan.md): this is the ONE
+# State ownership (constitution.md §3): this is the ONE
 # place test-harness/'s HARNESS_DIR and its derived cache/output/
 # UV_CACHE_DIR/RUFF_CACHE_DIR variables are defined and exported.
 # test-harness/ has no library/component children, so there is no
@@ -40,7 +40,7 @@ cmd_check_contracts() {
   ./check-contracts.py
 }
 
-# Formatter + lint gate (Phase 9 of docs/refactoring-plan.md). ruff comes
+# Formatter + lint gate (constitution.md §8). ruff comes
 # from the Nix dev shell (test-harness/flake.nix), not from this project's
 # locked dependencies - see that flake for why (prebuilt manylinux wheels
 # cannot execute on this repo's FHS-less NixOS guest). [tool.ruff] in
@@ -53,8 +53,8 @@ cmd_lint() {
   ruff check .
 }
 
-# ShellCheck gate over every tracked shell script in the repository (Phase 9
-# of docs/refactoring-plan.md): all tracked *.sh files (lifecycle.sh scripts,
+# ShellCheck gate over every tracked shell script in the repository
+# (constitution.md §8): all tracked *.sh files (lifecycle.sh scripts,
 # container/ scripts) plus bin/dx-worktree, a bash script without the .sh
 # suffix. This is a repo-wide check that happens to live in the harness
 # because shellcheck ships in this directory's dev shell; the root `lint`

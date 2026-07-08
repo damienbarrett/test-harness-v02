@@ -2,13 +2,13 @@
 
 > **ARCHIVED 2026-07-07: superseded; retained for history.** This plan was
 > never executed (no phase checkbox below is ticked) and predates the
-> `docs/refactoring-plan.md` harness refactor, which changed the exact
+> foundational harness refactor (git history; `docs/adr/`) that changed the exact
 > conventions this plan assumes it would be extending (multi-package WIT
 > discovery, fixture resolution, lifecycle parity, and more). Do not follow
 > it as live instructions; it is kept only as a record of a proposed
 > shopping-optimiser transposition. If that transposition is picked up again,
-> start from the current `docs/refactoring-plan.md` "Execution status" and
-> `common/README.md` instead of this file.
+> start from `common/README.md`, the ADRs in `docs/adr/`, and the current
+> README instead of this file.
 
 > **HANDOFF DOCUMENT.** This file is the single source of truth for an agent
 > with no prior context. Read the whole thing once before doing anything.

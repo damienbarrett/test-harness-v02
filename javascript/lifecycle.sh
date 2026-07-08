@@ -7,7 +7,7 @@
 # directory-owned command-body content, so only those verbs are implemented
 # here.
 #
-# State ownership (Phase 7 of docs/refactoring-plan.md): this is the ONE
+# State ownership (constitution.md §3): this is the ONE
 # place javascript/'s HARNESS_DIR and its derived cache/output variables are
 # defined and exported (JavaScript has no package-manager cache directory
 # equivalent to UV_CACHE_DIR/CARGO_TARGET_DIR that needs relocating - `npm

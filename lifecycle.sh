@@ -29,7 +29,7 @@ lang_step() {
   (cd "$1" && nix develop --command task "$2")
 }
 
-# check:lifecycle / check-lifecycle (Phase 7 of docs/refactoring-plan.md): an
+# check:lifecycle / check-lifecycle (constitution.md §3): an
 # on-demand, DESTRUCTIVE-then-restoring verification that `clean` and `purge`
 # actually honor the state-ownership contract documented in README.md's
 # Lifecycle section - `clean` removes generated outputs but preserves caches
@@ -134,8 +134,8 @@ case "$verb" in
     ;;
 
   wasm:test)
-    # UV_CACHE_DIR is derived once, inside test-harness/lifecycle.sh (Phase 7
-    # of docs/refactoring-plan.md) - not duplicated here.
+    # UV_CACHE_DIR is derived once, inside test-harness/lifecycle.sh
+    # (constitution.md §3) - not duplicated here.
     (cd test-harness && nix develop --command ./lifecycle.sh wasm-test)
     ;;
 
@@ -148,7 +148,7 @@ case "$verb" in
     ;;
 
   check:shell)
-    # Repo-wide ShellCheck gate (Phase 9 of docs/refactoring-plan.md). The
+    # Repo-wide ShellCheck gate (constitution.md §8). The
     # implementation lives in test-harness/lifecycle.sh because shellcheck
     # ships in that directory's Nix dev shell.
     (cd test-harness && nix develop --command ./lifecycle.sh check-shell)

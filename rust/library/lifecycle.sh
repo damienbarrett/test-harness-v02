@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Canonical lifecycle implementation for rust/library/.
 #
-# State ownership (Phase 7 of docs/refactoring-plan.md): HARNESS_DIR and its
+# State ownership (constitution.md §3): HARNESS_DIR and its
 # derived cache/output/CARGO_TARGET_DIR variables are defined once at the
 # language root (rust/lifecycle.sh) and inherited here when this script runs
 # as that script's delegate. For direct invocation (`cd rust/library && task
@@ -25,7 +25,7 @@ cmd_test() {
   cargo test --locked --offline --tests
 }
 
-# Formatter + lint gate (Phase 9 of docs/refactoring-plan.md). Both tools
+# Formatter + lint gate (constitution.md §8). Both tools
 # come from the Nix rust toolchain (rust/flake.nix minimal profile + clippy/
 # rustfmt extensions), not a Cargo dependency.
 cmd_lint() {

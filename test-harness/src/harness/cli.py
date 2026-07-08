@@ -28,7 +28,7 @@ undeclared function, a ``$fixture`` descriptor that cannot be resolved, or
 a WIT/JSON-Schema numeric or record mismatch fails the whole run
 immediately with a clear validation error, rather than surfacing as a raw
 traceback from suite-model loading or being masked by a
-missing-implementations failure (docs/refactoring-plan.md Phase 3).
+missing-implementations failure.
 
 Each case's ``$fixture`` descriptors are materialized (via
 ``harness.fixtures``, the same resolver contract validation used) before
@@ -36,7 +36,7 @@ call arguments are built, so components receive decoded file contents --
 never descriptors, and never filesystem paths. A suite whose ``targets``
 metadata excludes ``"component"`` is announced with an explicit
 ``SKIP (declared native-only): ...`` line and counts as neither pass nor
-fail (docs/refactoring-plan.md Phase 4).
+fail.
 
 Exit code 0 = all pass. Non-zero = at least one failure.
 """

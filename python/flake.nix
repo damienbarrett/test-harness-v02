@@ -16,7 +16,7 @@
             pkgs.uv
             pkgs.go-task
             pkgs.just
-            # ruff (Phase 9 of docs/refactoring-plan.md): provided by nixpkgs
+            # ruff (constitution.md §8): provided by nixpkgs
             # rather than as a uv-managed project dependency. Ruff ships as a
             # prebuilt native (Rust) binary; the NixOS-based guest OS this
             # repo standardizes on has no FHS `/lib/ld-linux*` loader path

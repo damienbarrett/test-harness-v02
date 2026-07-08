@@ -416,8 +416,7 @@ def write_page_contract(tmp_path, html_schema: dict | None = None) -> None:
 def test_fixture_input_is_materialized_before_parameter_schema_validation(tmp_path):
     """The parameter schema requires ``html`` to be a string; the raw
     descriptor (an object) could never satisfy it. Passing proves the
-    MATERIALIZED input is what gets validated (docs/refactoring-plan.md
-    Phase 4)."""
+    MATERIALIZED input is what gets validated."""
     write_page_contract(tmp_path)
     fixtures = tmp_path / "common" / "fixtures" / "html-parser"
     fixtures.mkdir(parents=True)
